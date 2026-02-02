@@ -237,7 +237,7 @@ namespace AzureAppServiceExamples
             var webApp = await resourceGroup.Value.GetWebSites()
                 .GetAsync(webAppName);
 
-            var patchInfo = new Azure.ResourceManager.AppService.Models.SitePatchInfo
+            var patchInfo = new Azure.ResourceManager.AppService.Models.SitePatchInfo 
             {
                 Identity = new Azure.ResourceManager.Models.ManagedServiceIdentity(
                     Azure.ResourceManager.Models.ManagedServiceIdentityType.SystemAssigned

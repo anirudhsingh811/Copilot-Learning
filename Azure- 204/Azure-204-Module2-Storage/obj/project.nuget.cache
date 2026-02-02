@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "A37j7HUV/B0=",
+  "dgSpecHash": "bBWysxmsHaM=",
   "success": true,
-  "projectFilePath": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\Azure-204-Module2-Storage\\Azure-204-Module2-Storage.csproj",
+  "projectFilePath": "C:\\Source-Code\\copilot\\Azure- 204\\Azure-204-Module2-Storage\\Azure-204-Module2-Storage.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\INASING7\\.nuget\\packages\\azure.core\\1.50.0\\azure.core.1.50.0.nupkg.sha512",
     "C:\\Users\\INASING7\\.nuget\\packages\\azure.data.tables\\12.9.1\\azure.data.tables.12.9.1.nupkg.sha512",

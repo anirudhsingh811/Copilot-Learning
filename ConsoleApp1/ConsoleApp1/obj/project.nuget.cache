@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "hp/czvvmTbg=",
+  "dgSpecHash": "WRuori5m9Z4=",
   "success": true,
-  "projectFilePath": "C:\\Users\\INASING7\\source\\repos\\ConsoleApp1\\ConsoleApp1\\ConsoleApp1.csproj",
+  "projectFilePath": "C:\\Source-Code\\copilot\\ConsoleApp1\\ConsoleApp1\\ConsoleApp1.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\INASING7\\.nuget\\packages\\azure.core\\1.44.1\\azure.core.1.44.1.nupkg.sha512",
     "C:\\Users\\INASING7\\.nuget\\packages\\azure.identity\\1.13.1\\azure.identity.1.13.1.nupkg.sha512",
@@ -92,9 +92,9 @@
       "code": "NU1903",
       "level": "Warning",
       "message": "Package 'Microsoft.Extensions.Caching.Memory' 9.0.0-preview.6.24327.7 has a known high severity vulnerability, https://github.com/advisories/GHSA-qj66-m88j-hmgj",
-      "projectPath": "C:\\Users\\INASING7\\source\\repos\\ConsoleApp1\\ConsoleApp1\\ConsoleApp1.csproj",
+      "projectPath": "C:\\Source-Code\\copilot\\ConsoleApp1\\ConsoleApp1\\ConsoleApp1.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\INASING7\\source\\repos\\ConsoleApp1\\ConsoleApp1\\ConsoleApp1.csproj",
+      "filePath": "C:\\Source-Code\\copilot\\ConsoleApp1\\ConsoleApp1\\ConsoleApp1.csproj",
       "libraryId": "Microsoft.Extensions.Caching.Memory",
       "targetGraphs": [
         "net10.0"

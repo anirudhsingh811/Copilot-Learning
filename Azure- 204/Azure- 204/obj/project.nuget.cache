@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "Ta+VeUbHoPA=",
+  "dgSpecHash": "hEc/eKvJhys=",
   "success": true,
-  "projectFilePath": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\Azure- 204\\Azure- 204.csproj",
+  "projectFilePath": "C:\\Source-Code\\copilot\\Azure- 204\\Azure- 204\\Azure- 204.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\INASING7\\.nuget\\packages\\aspnetcore.healthchecks.redis\\9.0.0\\aspnetcore.healthchecks.redis.9.0.0.nupkg.sha512",
     "C:\\Users\\INASING7\\.nuget\\packages\\aspnetcore.healthchecks.sqlserver\\9.0.0\\aspnetcore.healthchecks.sqlserver.9.0.0.nupkg.sha512",
@@ -183,9 +183,9 @@
       "code": "NU1902",
       "level": "Warning",
       "message": "Package 'KubernetesClient' 15.0.1 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-w7r3-mgwf-4mqq",
-      "projectPath": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\Azure- 204\\Azure- 204.csproj",
+      "projectPath": "C:\\Source-Code\\copilot\\Azure- 204\\Azure- 204\\Azure- 204.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\Azure- 204\\Azure- 204.csproj",
+      "filePath": "C:\\Source-Code\\copilot\\Azure- 204\\Azure- 204\\Azure- 204.csproj",
       "libraryId": "KubernetesClient",
       "targetGraphs": [
         "net9.0"

@@ -8457,11 +8457,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\Azure- 204\\Azure- 204.csproj",
+      "projectUniqueName": "C:\\Source-Code\\copilot\\Azure- 204\\Azure- 204\\Azure- 204.csproj",
       "projectName": "Azure- 204",
-      "projectPath": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\Azure- 204\\Azure- 204.csproj",
+      "projectPath": "C:\\Source-Code\\copilot\\Azure- 204\\Azure- 204\\Azure- 204.csproj",
       "packagesPath": "C:\\Users\\INASING7\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\Azure- 204\\obj\\",
+      "outputPath": "C:\\Source-Code\\copilot\\Azure- 204\\Azure- 204\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

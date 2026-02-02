@@ -1219,11 +1219,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\SimpleWebApp\\SimpleWebApp.csproj",
+      "projectUniqueName": "C:\\Source-Code\\copilot\\Azure- 204\\SimpleWebApp\\SimpleWebApp.csproj",
       "projectName": "SimpleWebApp",
-      "projectPath": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\SimpleWebApp\\SimpleWebApp.csproj",
+      "projectPath": "C:\\Source-Code\\copilot\\Azure- 204\\SimpleWebApp\\SimpleWebApp.csproj",
       "packagesPath": "C:\\Users\\INASING7\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\SimpleWebApp\\obj\\",
+      "outputPath": "C:\\Source-Code\\copilot\\Azure- 204\\SimpleWebApp\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

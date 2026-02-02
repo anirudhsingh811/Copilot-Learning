@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "iGqFPybUkQU=",
+  "dgSpecHash": "hWqozMPKmjs=",
   "success": true,
-  "projectFilePath": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\SimpleWebApp\\SimpleWebApp.csproj",
+  "projectFilePath": "C:\\Source-Code\\copilot\\Azure- 204\\SimpleWebApp\\SimpleWebApp.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\INASING7\\.nuget\\packages\\azure.core\\1.44.1\\azure.core.1.44.1.nupkg.sha512",
     "C:\\Users\\INASING7\\.nuget\\packages\\azure.identity\\1.13.1\\azure.identity.1.13.1.nupkg.sha512",

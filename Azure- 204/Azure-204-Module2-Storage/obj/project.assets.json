@@ -8319,11 +8319,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\Azure-204-Module2-Storage\\Azure-204-Module2-Storage.csproj",
+      "projectUniqueName": "C:\\Source-Code\\copilot\\Azure- 204\\Azure-204-Module2-Storage\\Azure-204-Module2-Storage.csproj",
       "projectName": "Azure-204-Module2-Storage",
-      "projectPath": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\Azure-204-Module2-Storage\\Azure-204-Module2-Storage.csproj",
+      "projectPath": "C:\\Source-Code\\copilot\\Azure- 204\\Azure-204-Module2-Storage\\Azure-204-Module2-Storage.csproj",
       "packagesPath": "C:\\Users\\INASING7\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\INASING7\\source\\repos\\Azure- 204\\Azure-204-Module2-Storage\\obj\\",
+      "outputPath": "C:\\Source-Code\\copilot\\Azure- 204\\Azure-204-Module2-Storage\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
