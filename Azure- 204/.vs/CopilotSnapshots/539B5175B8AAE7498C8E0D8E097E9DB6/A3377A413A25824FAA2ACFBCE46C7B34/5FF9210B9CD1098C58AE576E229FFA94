@@ -1,0 +1,261 @@
+﻿using System.Text.Json;
+
+namespace AZ204.ContainerInstances.Examples;
+
+/// <summary>
+/// Azure Container Instances Usage Scenarios
+/// </summary>
+public class ACIScenarios
+{
+    /// <summary>
+    /// Simulates a batch processing job
+    /// </summary>
+    public static async Task<string> BatchProcessingJobAsync(int batchSize = 5)
+    {
+        Console.WriteLine($"\n🔄 Starting Batch Processing Job");
+        Console.WriteLine($"Processing {batchSize} items in parallel");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        var startTime = DateTime.UtcNow;
+        var tasks = new List<Task<object>>();
+
+        for (int i = 1; i <= batchSize; i++)
+        {
+            var itemId = i;
+            tasks.Add(Task.Run(async () =>
+            {
+                Console.WriteLine($"   🔄 Container {itemId}: Starting processing...");
+                await Task.Delay(Random.Shared.Next(1000, 3000)); // Simulate work
+                
+                var result = new
+                {
+                    containerId = $"aci-batch-{itemId}",
+                    itemsProcessed = Random.Shared.Next(100, 500),
+                    status = "Completed"
+                };
+                
+                Console.WriteLine($"   ✅ Container {itemId}: Processed {result.itemsProcessed} items");
+                return result;
+            }));
+        }
+
+        var results = await Task.WhenAll(tasks);
+        var duration = DateTime.UtcNow - startTime;
+
+        var totalItems = results.Sum(r => ((dynamic)r).itemsProcessed);
+        Console.WriteLine($"\n✅ Batch processing complete!");
+        Console.WriteLine($"   Total items processed: {totalItems}");
+        Console.WriteLine($"   Duration: {duration.TotalSeconds:F2} seconds\n");
+
+        return JsonSerializer.Serialize(new
+        {
+            batchSize,
+            totalItems,
+            duration = $"{duration.TotalSeconds:F2}s",
+            containers = results
+        }, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    /// <summary>
+    /// Simulates CI/CD build agent scenario
+    /// </summary>
+    public static async Task<string> CICDBuildAgentAsync()
+    {
+        Console.WriteLine($"\n🔄 CI/CD Build Agent Scenario");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        var stages = new[]
+        {
+            ("Restore Dependencies", 2000),
+            ("Build Solution", 3000),
+            ("Run Tests", 4000),
+            ("Create Artifacts", 1500),
+            ("Publish", 1000)
+        };
+
+        var startTime = DateTime.UtcNow;
+
+        foreach (var (stage, duration) in stages)
+        {
+            Console.WriteLine($"📦 {stage}...");
+            await Task.Delay(duration);
+            Console.WriteLine($"   ✅ {stage} completed\n");
+        }
+
+        var totalDuration = DateTime.UtcNow - startTime;
+
+        Console.WriteLine($"✅ Build completed successfully!");
+        Console.WriteLine($"   Total duration: {totalDuration.TotalSeconds:F2} seconds\n");
+
+        return JsonSerializer.Serialize(new
+        {
+            scenario = "CI/CD Build Agent",
+            stages = stages.Select(s => new { name = s.Item1, duration = $"{s.Item2}ms" }),
+            totalDuration = $"{totalDuration.TotalSeconds:F2}s",
+            status = "Success"
+        }, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    /// <summary>
+    /// Simulates ML model inference
+    /// </summary>
+    public static async Task<string> MLInferenceAsync(int requestCount = 10)
+    {
+        Console.WriteLine($"\n🔄 ML Model Inference with GPU");
+        Console.WriteLine($"Processing {requestCount} inference requests");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("⚙️  Initializing GPU container...");
+        await Task.Delay(2000);
+        Console.WriteLine("✅ GPU container ready\n");
+
+        Console.WriteLine("🤖 Loading ML model...");
+        await Task.Delay(1500);
+        Console.WriteLine("✅ Model loaded (ResNet-50)\n");
+
+        var startTime = DateTime.UtcNow;
+        var results = new List<object>();
+
+        for (int i = 1; i <= requestCount; i++)
+        {
+            await Task.Delay(Random.Shared.Next(100, 300));
+            var confidence = 0.85 + (Random.Shared.NextDouble() * 0.15);
+            var inferenceTime = Random.Shared.Next(50, 150);
+            
+            var result = new
+            {
+                requestId = i,
+                prediction = new[] { "dog", "cat", "bird", "car", "person" }[Random.Shared.Next(5)],
+                confidence = Math.Round(confidence, 2),
+                inferenceTimeMs = inferenceTime
+            };
+            
+            results.Add(result);
+            Console.WriteLine($"   ✅ Request {i}: {result.prediction} ({result.confidence:P0}) - {result.inferenceTimeMs}ms");
+        }
+
+        var totalDuration = DateTime.UtcNow - startTime;
+        var avgInference = results.Average(r => ((dynamic)r).inferenceTimeMs);
+
+        Console.WriteLine($"\n✅ Inference batch complete!");
+        Console.WriteLine($"   Requests processed: {requestCount}");
+        Console.WriteLine($"   Average inference time: {avgInference:F0}ms");
+        Console.WriteLine($"   Total duration: {totalDuration.TotalSeconds:F2}s\n");
+
+        return JsonSerializer.Serialize(new
+        {
+            scenario = "ML Inference with GPU",
+            model = "ResNet-50",
+            requestCount,
+            averageInferenceMs = Math.Round(avgInference, 0),
+            totalDuration = $"{totalDuration.TotalSeconds:F2}s",
+            results
+        }, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    /// <summary>
+    /// Simulates sidecar pattern with logging
+    /// </summary>
+    public static async Task<string> SidecarPatternAsync()
+    {
+        Console.WriteLine($"\n🔄 Multi-Container Group - Sidecar Pattern");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📦 Starting containers...");
+        Console.WriteLine("   🔸 Main application container");
+        Console.WriteLine("   🔸 Logging sidecar (Fluentd)");
+        Console.WriteLine("   🔸 Metrics sidecar (Prometheus)");
+        await Task.Delay(2000);
+        Console.WriteLine("✅ All containers started\n");
+
+        var events = new[]
+        {
+            ("Application", "Processing request #1"),
+            ("Logging", "Forwarding logs to Azure Monitor"),
+            ("Metrics", "Collecting CPU metrics: 45%"),
+            ("Application", "Processing request #2"),
+            ("Metrics", "Collecting memory metrics: 512 MB"),
+            ("Application", "Processing request #3"),
+            ("Logging", "Forwarding logs to Azure Monitor"),
+            ("Metrics", "Collecting network metrics: 1.2 MB/s")
+        };
+
+        foreach (var (container, event_msg) in events)
+        {
+            await Task.Delay(500);
+            var icon = container switch
+            {
+                "Application" => "🔵",
+                "Logging" => "📝",
+                "Metrics" => "📊",
+                _ => "🔸"
+            };
+            Console.WriteLine($"{icon} [{container}] {event_msg}");
+        }
+
+        Console.WriteLine($"\n✅ Sidecar pattern demonstration complete!\n");
+
+        return JsonSerializer.Serialize(new
+        {
+            pattern = "Sidecar",
+            containers = new[]
+            {
+                new { name = "app-container", image = "your-app:latest", role = "Main Application" },
+                new { name = "logging-sidecar", image = "fluent/fluentd", role = "Log Aggregation" },
+                new { name = "metrics-sidecar", image = "prom/prometheus", role = "Metrics Collection" }
+            },
+            benefits = new[]
+            {
+                "Separation of concerns",
+                "Independent scaling",
+                "Shared localhost networking",
+                "Simplified deployment"
+            }
+        }, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    /// <summary>
+    /// Simulates data processing pipeline
+    /// </summary>
+    public static async Task<string> DataProcessingPipelineAsync(int fileCount = 5)
+    {
+        Console.WriteLine($"\n🔄 Data Processing Pipeline");
+        Console.WriteLine($"Processing {fileCount} data files");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        var startTime = DateTime.UtcNow;
+
+        for (int i = 1; i <= fileCount; i++)
+        {
+            Console.WriteLine($"📁 File {i}/{fileCount}:");
+            
+            Console.WriteLine("   🔄 Extract...");
+            await Task.Delay(500);
+            Console.WriteLine("   ✅ Extracted 10,000 records");
+
+            Console.WriteLine("   🔄 Transform...");
+            await Task.Delay(800);
+            Console.WriteLine("   ✅ Transformed and validated");
+
+            Console.WriteLine("   🔄 Load...");
+            await Task.Delay(600);
+            Console.WriteLine("   ✅ Loaded to database\n");
+        }
+
+        var duration = DateTime.UtcNow - startTime;
+
+        Console.WriteLine($"✅ Pipeline complete!");
+        Console.WriteLine($"   Files processed: {fileCount}");
+        Console.WriteLine($"   Total records: {fileCount * 10000:N0}");
+        Console.WriteLine($"   Duration: {duration.TotalSeconds:F2}s\n");
+
+        return JsonSerializer.Serialize(new
+        {
+            scenario = "ETL Data Processing Pipeline",
+            filesProcessed = fileCount,
+            totalRecords = fileCount * 10000,
+            duration = $"{duration.TotalSeconds:F2}s",
+            stages = new[] { "Extract", "Transform", "Load" }
+        }, new JsonSerializerOptions { WriteIndented = true });
+    }
+}

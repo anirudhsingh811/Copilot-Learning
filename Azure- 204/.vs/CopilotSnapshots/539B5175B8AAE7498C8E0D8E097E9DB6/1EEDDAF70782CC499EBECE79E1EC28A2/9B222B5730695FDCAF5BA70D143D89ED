@@ -1,0 +1,536 @@
+﻿# AZ-204 Module 1: Develop Azure Compute Solutions
+## Architect-Level Reference Implementation
+
+This repository contains production-ready, enterprise-grade examples for all Azure compute services covered in AZ-204 Module 1, designed for experienced architects.
+
+---
+
+## ? Getting Started
+
+### Prerequisites
+- Azure CLI installed (`az --version`)
+- .NET 9 SDK
+- Azure subscription with Owner or Contributor role
+- PowerShell 7+ (for deployment script)
+
+### Quick Start Deployment
+
+**1. Deploy All Azure Resources:**
+```powershell
+cd "Azure- 204"
+.\deploy-all-services.ps1
+```
+
+**2. Update Configuration:**
+The script automatically outputs a complete JSON configuration. Copy it to `appsettings.json`:
+
+```
+========================================
+COPY THESE VALUES TO YOUR appsettings.json
+========================================
+
+{
+  "AppService": {
+    "WebAppName": "webapp-az204-7823",  ? Unique names generated
+    ...
+  }
+}
+```
+
+**3. Run the Application:**
+```powershell
+dotnet run
+```
+
+**? See detailed instructions:**
+- [QUICKSTART-DEPLOYMENT.md](QUICKSTART-DEPLOYMENT.md) - 3-step quick guide
+- [DEPLOYMENT-GUIDE.md](DEPLOYMENT-GUIDE.md) - Complete deployment documentation
+- [SAMPLE-OUTPUT.md](SAMPLE-OUTPUT.md) - Example of script output
+
+### Why This Approach?
+
+**Problem:** Azure resource names must be globally unique. Manually managing names across PowerShell scripts and appsettings.json is error-prone.
+
+**Solution:** The deployment script:
+- ? Generates unique resource names with a consistent random suffix
+- ? Uses these names throughout deployment
+- ? Automatically fetches all connection strings from Azure
+- ? Outputs a complete, ready-to-use appsettings.json configuration
+
+**Result:** No manual Azure Portal lookups. No naming mismatches. Copy-paste and go!
+
+---
+
+## ?? Repository Structure
+
+```
+Azure- 204/
+?
+??? 01-AppService/
+?   ??? AppServiceConfiguration.cs      # Enterprise App Service setup
+?   ??? DeploymentSlotManager.cs        # Blue-green deployments
+??? 02-Functions/
+?   ??? DurableOrderProcessing.cs       # Saga pattern, orchestrations
+?   ??? EventDrivenFunctions.cs         # Event sourcing, CQRS
+??? 03-ContainerInstances/
+?   ??? ContainerInstanceManager.cs     # Multi-container groups, GPU
+??? 04-AKS/
+?   ??? AksClusterManager.cs            # Production AKS clusters
+??? 05-ContainerApps/
+?   ??? ContainerAppsManager.cs         # Dapr, microservices
+?
+??? deploy-all-services.ps1             # Automated deployment
+??? appsettings.json                     # Configuration (update after deployment)
+?
+??? QUICKSTART-DEPLOYMENT.md            # ? Quick start guide
+??? DEPLOYMENT-GUIDE.md                 # ? Detailed documentation
+??? SAMPLE-OUTPUT.md                    # ? Example script output
+```
+
+---
+
+## ??? Architecture Patterns Implemented
+
+### 1. **App Service: Enterprise Patterns**
+
+#### Key Features:
+- ? **Key Vault Integration** with Managed Identity
+- ? **Application Insights** with custom telemetry
+- ? **Health Checks** (database, redis, external APIs)
+- ? **Polly Resilience Policies** (retry, circuit breaker, timeout)
+- ? **Blue-Green Deployments** with automated rollback
+- ? **Progressive Traffic Routing** (10% ? 25% ? 50% ? 100%)
+
+#### Usage Example:
+
+```csharp
+// Configure enterprise App Service
+var builder = WebApplication.CreateBuilder(args);
+AppServiceConfiguration.ConfigureAppService(builder.Host);
+
+// Perform blue-green deployment
+var deploymentManager = new DeploymentSlotManager(
+    subscriptionId, resourceGroup, webAppName, logger);
+
+var result = await deploymentManager.PerformBlueGreenDeploymentAsync(
+    sourceSlot: "production",
+    targetSlot: "staging",
+    options: new DeploymentOptions
+    {
+        UseProgressiveRollout = true,
+        RolloutPercentages = new[] { 10, 25, 50, 100 },
+        AutoRollback = true,
+        HealthCheckRetries = 3
+    });
+```
+
+#### Best Practices:
+1. **Always use deployment slots** for zero-downtime deployments
+2. **Implement health checks** at multiple levels
+3. **Use Managed Identity** for all Azure service connections
+4. **Store secrets in Key Vault**, never in app settings
+5. **Enable Application Insights** for end-to-end monitoring
+6. **Configure auto-scaling** based on metrics (CPU, memory, custom)
+
+---
+
+### 2. **Azure Functions: Advanced Patterns**
+
+#### Key Features:
+- ? **Durable Functions Orchestrations** (Saga pattern)
+- ? **Fan-out/Fan-in** for parallel processing
+- ? **Human Interaction Pattern** with timeouts
+- ? **Compensating Transactions** for rollbacks
+- ? **Event Sourcing** with Cosmos DB change feed
+- ? **CQRS Pattern** with read/write models
+- ? **Dead-letter Queue Handling**
+- ? **Session-based Processing** with Service Bus
+
+#### Usage Example:
+
+```csharp
+// Start a saga-based order orchestration
+var client = functionContext.GetDurableTaskClient();
+var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(
+    nameof(OrderOrchestrator),
+    new Order { OrderId = "ORD-123", TotalAmount = 299.99m });
+
+// Approve shipping (Human Interaction)
+await client.RaiseEventAsync(instanceId, "ShippingApproval", true);
+
+// Check orchestration status
+var metadata = await client.GetInstanceAsync(instanceId);
+```
+
+#### Best Practices:
+1. **Use Durable Functions** for long-running workflows
+2. **Implement compensating transactions** for saga patterns
+3. **Avoid creating new HttpClient instances** - use static/singleton
+4. **Use exponential backoff** for retry policies
+5. **Monitor with Application Insights** - track dependencies
+6. **Use Service Bus sessions** for ordered message processing
+7. **Implement dead-letter queue handlers** for poison messages
+
+---
+
+### 3. **Azure Container Instances: Advanced Scenarios**
+
+#### Key Features:
+- ? **Multi-container Groups** (sidecar pattern)
+- ? **Init Containers** for setup tasks
+- ? **GPU Support** for ML/AI workloads
+- ? **VNet Integration** for private networking
+- ? **Azure Files Volume Mounts** for shared storage
+- ? **Log Analytics Integration**
+- ? **Container Monitoring** with real-time logs
+
+#### Usage Example:
+
+```csharp
+// Create multi-container group with sidecars
+var containerGroup = await aciManager.CreateMultiContainerGroupAsync(
+    "my-app-group",
+    new ContainerGroupConfiguration
+    {
+        AppImage = "myapp:latest",
+        Location = "eastus",
+        KeyVaultUrl = "https://myvault.vault.azure.net",
+        UseInitContainer = true,
+        StorageAccountName = "mystorageaccount",
+        FileShareName = "shared-data"
+    });
+
+// Create GPU-enabled container for ML inference
+var gpuContainer = await aciManager.CreateGpuContainerAsync(
+    "ml-inference",
+    new GpuContainerConfiguration
+    {
+        Image = "tensorflow/tensorflow:latest-gpu",
+        GpuCount = 1,
+        GpuSku = ContainerGpuSku.V100,
+        Command = new[] { "python", "inference.py" }
+    });
+```
+
+#### Best Practices:
+1. **Use sidecar pattern** for logging, monitoring, proxies
+2. **Implement init containers** for setup/migration tasks
+3. **Use VNet integration** for secure communications
+4. **Mount Azure Files** for persistent storage
+5. **Set resource limits** to prevent cost overruns
+6. **Use restart policies** appropriately (Always, OnFailure, Never)
+
+---
+
+### 4. **Azure Kubernetes Service: Production-Ready**
+
+#### Key Features:
+- ? **System & User Node Pools** with auto-scaling
+- ? **Azure AD Integration** with RBAC
+- ? **Network Policies** for pod security
+- ? **Horizontal Pod Autoscaler (HPA)**
+- ? **Cluster Autoscaler**
+- ? **Ingress with TLS** (NGINX, cert-manager)
+- ? **Azure Monitor for Containers**
+- ? **Azure Key Vault CSI Driver**
+- ? **Azure Policy Integration**
+- ? **Availability Zones** for HA
+
+#### Usage Example:
+
+```csharp
+// Create production AKS cluster
+var cluster = await aksManager.CreateAksClusterAsync(
+    "prod-aks-cluster",
+    new AksClusterConfiguration
+    {
+        KubernetesVersion = "1.28.0",
+        SystemNodeCount = 3,
+        SystemNodeVmSize = "Standard_DS2_v2",
+        UserNodeCount = 2,
+        UserNodeVmSize = "Standard_DS3_v2",
+        AdminGroupObjectId = "aad-group-id",
+        LogAnalyticsWorkspaceId = "/subscriptions/.../workspace",
+        IsPrivateCluster = false
+    });
+
+// Deploy application with auto-scaling
+await aksManager.DeployApplicationAsync(
+    "prod-aks-cluster",
+    new ApplicationDeployment
+    {
+        Name = "my-api",
+        Namespace = "production",
+        Image = "myacr.azurecr.io/api:v1.0",
+        Replicas = 3,
+        EnableAutoScaling = true,
+        MinReplicas = 2,
+        MaxReplicas = 10,
+        Labels = new Dictionary<string, string>
+        {
+            ["app"] = "my-api",
+            ["version"] = "v1.0"
+        }
+    });
+
+// Configure ingress with TLS
+await aksManager.ConfigureIngressAsync(
+    "prod-aks-cluster",
+    new IngressConfiguration
+    {
+        Name = "api-ingress",
+        Namespace = "production",
+        Host = "api.mydomain.com",
+        ServiceName = "my-api-service",
+        ServicePort = 80
+    });
+```
+
+#### Best Practices:
+1. **Separate system and user node pools**
+2. **Enable Azure AD integration** with RBAC
+3. **Use availability zones** for high availability
+4. **Implement network policies** for pod-to-pod security
+5. **Use Azure Key Vault CSI Driver** for secrets
+6. **Configure HPA** for application auto-scaling
+7. **Enable cluster autoscaler** for cost optimization
+8. **Use Azure Monitor** for observability
+9. **Implement GitOps** with Flux/ArgoCD
+10. **Regular Kubernetes version upgrades**
+
+---
+
+### 5. **Azure Container Apps: Serverless Containers**
+
+#### Key Features:
+- ? **Dapr Integration** (state, pub/sub, bindings)
+- ? **KEDA Auto-scaling** (HTTP, Service Bus, custom)
+- ? **Blue-Green Deployments** with traffic splitting
+- ? **Multiple Revisions** with traffic management
+- ? **VNet Integration** for private networking
+- ? **Custom Domains** with TLS
+- ? **Microservices Architecture** ready
+
+#### Usage Example:
+
+```csharp
+// Create Container Apps environment
+var environment = await containerAppsManager.CreateEnvironmentAsync(
+    "prod-environment",
+    new EnvironmentConfiguration
+    {
+        Location = "eastus",
+        LogAnalyticsWorkspaceId = "workspace-id",
+        LogAnalyticsSharedKey = "shared-key",
+        IsZoneRedundant = true
+    });
+
+// Deploy microservices with Dapr
+var microservices = await containerAppsManager.DeployMicroservicesAsync(
+    environment.Id,
+    new MicroservicesConfiguration
+    {
+        GatewayImage = "myacr.azurecr.io/gateway:latest",
+        ServiceAImage = "myacr.azurecr.io/service-a:latest",
+        ServiceBImage = "myacr.azurecr.io/service-b:latest",
+        ServiceBusQueueName = "orders-queue",
+        RedisHost = "myredis.redis.cache.windows.net:6380",
+        RedisPassword = "redis-password"
+    });
+
+// Blue-green deployment with progressive rollout
+var deployment = await containerAppsManager.BlueGreenDeploymentAsync(
+    "api-gateway",
+    "myacr.azurecr.io/gateway:v2.0",
+    trafficPercentages: new[] { 10, 25, 50, 100 });
+```
+
+#### Best Practices:
+1. **Use Dapr** for microservices communication
+2. **Implement KEDA scaling rules** based on events
+3. **Use multiple revisions** for traffic splitting
+4. **Enable zone redundancy** for HA
+5. **Integrate with VNet** for security
+6. **Use managed identities** for Azure services
+7. **Monitor with Application Insights**
+
+---
+
+## ?? Security Best Practices
+
+### 1. **Identity and Access Management**
+```csharp
+// Use Managed Identity
+var credential = new DefaultAzureCredential();
+var secretClient = new SecretClient(
+    new Uri("https://myvault.vault.azure.net"), 
+    credential);
+
+// Never hardcode credentials
+// ? DON'T: var password = "hardcoded123";
+// ? DO: var password = await secretManager.GetSecretAsync("db-password");
+```
+
+### 2. **Network Security**
+- Use **Private Endpoints** for Azure services
+- Implement **NSG rules** to restrict traffic
+- Enable **DDoS Protection** for public endpoints
+- Use **Application Gateway with WAF** for web apps
+
+### 3. **Secrets Management**
+```csharp
+// Key Vault references in App Settings
+"ConnectionStrings:Database": "@Microsoft.KeyVault(SecretUri=https://vault.azure.net/secrets/db-conn/)"
+
+// Rotate secrets regularly
+// Use Azure Key Vault CSI Driver in AKS
+```
+
+---
+
+## ?? Monitoring & Observability
+
+### 1. **Application Insights Integration**
+```csharp
+// Custom telemetry
+telemetryClient.TrackEvent("OrderProcessed", 
+    properties: new Dictionary<string, string> 
+    { 
+        ["OrderId"] = orderId,
+        ["CustomerId"] = customerId 
+    });
+
+// Track dependencies
+var dependency = telemetryClient.StartOperation<DependencyTelemetry>("Database Query");
+// ... execute query
+telemetryClient.StopOperation(dependency);
+```
+
+### 2. **Key Metrics to Monitor**
+- **App Service**: Response time, requests/sec, CPU, memory, errors
+- **Functions**: Execution count, duration, failures, throttles
+- **ACI/AKS**: CPU utilization, memory usage, pod restarts
+- **Container Apps**: Request count, response time, replica count
+
+### 3. **Alerting Strategy**
+```yaml
+alerts:
+  - name: "High Error Rate"
+    condition: "requests/failed > 5%"
+    action: "Page on-call engineer"
+  
+  - name: "High Response Time"
+    condition: "avg response time > 2 seconds"
+    action: "Send Slack notification"
+```
+
+---
+
+## ?? Cost Optimization
+
+### 1. **App Service**
+- Use **Basic/Standard tier** for dev/test
+- Enable **auto-scaling** to scale down during off-hours
+- Use **Reserved Instances** for predictable workloads
+
+### 2. **Functions**
+- Use **Consumption Plan** for sporadic workloads
+- Use **Premium Plan** for low-latency requirements
+- Optimize function execution time
+
+### 3. **AKS**
+- Use **Spot VMs** for non-critical workloads (60-80% cost savings)
+- Enable **cluster autoscaler**
+- Use **smaller VM SKUs** where possible
+- Implement **pod right-sizing**
+
+### 4. **Container Apps**
+- Scale to zero when idle
+- Use appropriate min/max replicas
+- Optimize container image sizes
+
+---
+
+## ?? Testing Strategies
+
+### 1. **Load Testing**
+```csharp
+// Use Azure Load Testing service
+// Test scenarios:
+// - Ramp-up: 0 ? 1000 users over 5 minutes
+// - Sustained: 1000 users for 30 minutes
+// - Spike: Sudden 5000 users for 2 minutes
+```
+
+### 2. **Chaos Engineering**
+```bash
+# Chaos Mesh for AKS
+kubectl apply -f chaos-experiment.yaml
+
+# Test scenarios:
+# - Pod failures
+# - Network delays
+# - CPU stress
+# - Memory stress
+```
+
+---
+
+## ?? Additional Resources
+
+### Official Documentation
+- [Azure App Service](https://docs.microsoft.com/azure/app-service/)
+- [Azure Functions](https://docs.microsoft.com/azure/azure-functions/)
+- [Azure Container Instances](https://docs.microsoft.com/azure/container-instances/)
+- [Azure Kubernetes Service](https://docs.microsoft.com/azure/aks/)
+- [Azure Container Apps](https://docs.microsoft.com/azure/container-apps/)
+
+### Architecture Guidance
+- [Azure Architecture Center](https://docs.microsoft.com/azure/architecture/)
+- [Cloud Design Patterns](https://docs.microsoft.com/azure/architecture/patterns/)
+- [Well-Architected Framework](https://docs.microsoft.com/azure/architecture/framework/)
+
+### Sample Architectures
+- [Microservices on Azure](https://docs.microsoft.com/azure/architecture/reference-architectures/microservices/)
+- [Event-driven Architecture](https://docs.microsoft.com/azure/architecture/guide/architecture-styles/event-driven)
+- [Serverless Architecture](https://docs.microsoft.com/azure/architecture/serverless-quest/)
+
+---
+
+## ?? AZ-204 Exam Tips for Architects
+
+### What's Actually Tested:
+1. **Practical implementation** > theoretical knowledge
+2. **Service limitations** and when to use what
+3. **Cost optimization** decisions
+4. **Security** configurations
+5. **Monitoring** and troubleshooting
+
+### Focus Areas:
+- Deployment slots and swap operations
+- Durable Functions orchestration patterns
+- AKS RBAC and network policies
+- Container Apps Dapr integration
+- Auto-scaling configurations
+
+### Common Gotchas:
+- Slot swap doesn't swap connection strings marked as "slot settings"
+- Functions Consumption Plan has cold start issues
+- ACI doesn't support in-place scaling
+- AKS cluster autoscaler != HPA
+- Container Apps scale-to-zero requires specific configuration
+
+---
+
+## ?? Support
+
+For questions or issues with these examples:
+- Open an issue in this repository
+- Refer to official Azure documentation
+- Join Azure community forums
+
+---
+
+**License**: MIT  
+**Author**: AZ-204 Architect Study Guide  
+**Version**: 2024.1

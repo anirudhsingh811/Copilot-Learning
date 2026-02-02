@@ -1,0 +1,53 @@
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace AZ204.Security;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        var host = Host.CreateDefaultBuilder(args)
+            .ConfigureAppConfiguration((context, config) =>
+            {
+                config.AddJsonFile("appsettings.json", optional: true);
+                config.AddEnvironmentVariables();
+                config.AddUserSecrets<Program>(optional: true);
+            })
+            .ConfigureServices((context, services) =>
+            {
+                services.AddLogging(builder =>
+                {
+                    builder.AddConsole();
+                    builder.AddDebug();
+                });
+            })
+            .Build();
+
+        var logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+        Console.WriteLine("???????????????????????????????????????????????????????????????");
+        Console.WriteLine("?   AZ-204 Module 3: Implement Azure Security                  ?");
+        Console.WriteLine("?   Interactive Learning Environment                           ?");
+        Console.WriteLine("???????????????????????????????????????????????????????????????");
+        Console.WriteLine();
+        Console.WriteLine("?? Coming Soon!");
+        Console.WriteLine();
+        Console.WriteLine("This module will cover:");
+        Console.WriteLine("  • Azure Active Directory (Azure AD) authentication");
+        Console.WriteLine("  • MSAL (Microsoft Authentication Library)");
+        Console.WriteLine("  • Azure Key Vault (secrets, certificates, keys)");
+        Console.WriteLine("  • Microsoft Graph API");
+        Console.WriteLine("  • Shared Access Signatures (SAS)");
+        Console.WriteLine("  • Managed Identity");
+        Console.WriteLine();
+        Console.WriteLine("?? Exam Weight: 20-25% (HIGHEST PRIORITY!)");
+        Console.WriteLine();
+        Console.WriteLine("Press any key to exit...");
+        Console.ReadKey();
+
+        await Task.CompletedTask;
+    }
+}

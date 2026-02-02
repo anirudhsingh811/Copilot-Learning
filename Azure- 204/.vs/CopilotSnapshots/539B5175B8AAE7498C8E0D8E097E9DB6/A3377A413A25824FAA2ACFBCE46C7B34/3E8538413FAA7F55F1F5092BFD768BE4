@@ -1,0 +1,14 @@
+﻿// ADD THESE METHODS TO THE END OF Program.cs CLASS (before the closing brace)
+// Copy everything below and paste before the last closing brace of the Program class
+
+    static async Task DisplayContainerInstancesExamplesAsync(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.WriteLine("\nACI demos not yet fully integrated - please check INSTRUCTIONS_ACI_AKS.md");
+        await Task.CompletedTask;
+    }
+
+    static async Task DisplayAksExamplesAsync(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.WriteLine("\nAKS demos not yet fully integrated - please check INSTRUCTIONS_ACI_AKS.md");
+        await Task.CompletedTask;
+    }

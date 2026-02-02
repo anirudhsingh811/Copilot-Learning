@@ -1,0 +1,528 @@
+﻿# Instructions to Add ACI and AKS Interactive Demos
+
+Add these methods to your `Program.cs` file right after the `DisplayFunctionsDocumentation()` method (around line 1100):
+
+```csharp
+    // ADD THESE METHODS FOR AZURE CONTAINER INSTANCES
+
+    static async Task DisplayContainerInstancesExamplesAsync(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE CONTAINER INSTANCES - SCENARIOS");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        while (true)
+        {
+            Console.WriteLine("\n═══════════════════════════════════════════════════════════════");
+            Console.WriteLine("│  ACI DEMO OPTIONS:                                           │");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.WriteLine("│  1. Batch Processing Job                                     │");
+            Console.WriteLine("│  2. CI/CD Build Agent                                        │");
+            Console.WriteLine("│  3. ML Model Inference with GPU                              │");
+            Console.WriteLine("│  4. Sidecar Pattern (Multi-container)                        │");
+            Console.WriteLine("│  5. Data Processing Pipeline (ETL)                           │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  MANAGEMENT:                                                 │");
+            Console.WriteLine("│  6. Create Container Instance                                │");
+            Console.WriteLine("│  7. View Documentation                                       │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  0. Back to Main Menu                                        │");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.Write("\nEnter your choice: ");
+
+            var choice = Console.ReadLine()?.Trim();
+
+            try
+            {
+                switch (choice)
+                {
+                    case "1":
+                        await ACIBatchProcessingDemo();
+                        break;
+                    case "2":
+                        await ACICIBuildAgentDemo();
+                        break;
+                    case "3":
+                        await ACIMLInferenceDemo();
+                        break;
+                    case "4":
+                        await ACISidecarPatternDemo();
+                        break;
+                    case "5":
+                        await ACIDataPipelineDemo();
+                        break;
+                    case "6":
+                        await CreateContainerInstanceDemo(logger, configuration);
+                        break;
+                    case "7":
+                        DisplayACIDocumentation();
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        Console.WriteLine("\n❌ Invalid choice. Please try again.");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error in ACI demo");
+                Console.WriteLine($"\n❌ Error: {ex.Message}");
+            }
+
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+            Console.Clear();
+        }
+    }
+
+    static async Task ACIBatchProcessingDemo()
+    {
+        Console.Clear();
+        Console.Write("Enter batch size (default 5): ");
+        var input = Console.ReadLine()?.Trim();
+        var batchSize = int.TryParse(input, out int size) ? size : 5;
+        
+        var result = await AZ204.ContainerInstances.Examples.ACIScenarios.BatchProcessingJobAsync(batchSize);
+        Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task ACICIBuildAgentDemo()
+    {
+        Console.Clear();
+        var result = await AZ204.ContainerInstances.Examples.ACIScenarios.CICDBuildAgentAsync();
+        Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task ACIMLInferenceDemo()
+    {
+        Console.Clear();
+        Console.Write("Enter number of inference requests (default 10): ");
+        var input = Console.ReadLine()?.Trim();
+        var count = int.TryParse(input, out int c) ? c : 10;
+        
+        var result = await AZ204.ContainerInstances.Examples.ACIScenarios.MLInferenceAsync(count);
+        Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task ACISidecarPatternDemo()
+    {
+        Console.Clear();
+        var result = await AZ204.ContainerInstances.Examples.ACIScenarios.SidecarPatternAsync();
+        Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task ACIDataPipelineDemo()
+    {
+        Console.Clear();
+        Console.Write("Enter number of files to process (default 5): ");
+        var input = Console.ReadLine()?.Trim();
+        var count = int.TryParse(input, out int c) ? c : 5;
+        
+        var result = await AZ204.ContainerInstances.Examples.ACIScenarios.DataProcessingPipelineAsync(count);
+        Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task CreateContainerInstanceDemo(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  CREATE CONTAINER INSTANCE");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        var subscriptionId = configuration["Azure:SubscriptionId"];
+        var resourceGroupName = configuration["Azure:ResourceGroup"];
+        var containerGroupName = configuration["ContainerInstances:ContainerGroupName"];
+        var imageName = configuration["ContainerInstances:Image"];
+        var location = configuration["Azure:Location"] ?? "eastus";
+
+        Console.WriteLine("📋 Configuration from appsettings.json:");
+        Console.WriteLine($"   Subscription ID: {subscriptionId}");
+        Console.WriteLine($"   Resource Group: {resourceGroupName}");
+        Console.WriteLine($"   Container Group: {containerGroupName}");
+        Console.WriteLine($"   Image: {imageName}");
+        Console.WriteLine($"   Location: {location}\n");
+
+        if (string.IsNullOrEmpty(subscriptionId) || string.IsNullOrEmpty(resourceGroupName))
+        {
+            Console.WriteLine("\n❌ Configuration missing! Please check appsettings.json");
+            return;
+        }
+
+        Console.Write("Create multi-container group (sidecar pattern)? (yes/no): ");
+        var isMulti = Console.ReadLine()?.Trim().ToLower() == "yes";
+
+        try
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            var aciLogger = loggerFactory.CreateLogger<AZ204.ContainerInstances.ContainerInstanceManager>();
+            var aciManager = new AZ204.ContainerInstances.ContainerInstanceManager(aciLogger);
+
+            Console.WriteLine("\n⏳ Creating container instance (this may take a few minutes)...\n");
+
+            ContainerGroupResource containerGroup;
+            if (isMulti)
+            {
+                containerGroup = await aciManager.CreateMultiContainerGroupAsync(
+                    subscriptionId, resourceGroupName, containerGroupName, location);
+            }
+            else
+            {
+                containerGroup = await aciManager.CreateSimpleContainerAsync(
+                    subscriptionId, resourceGroupName, containerGroupName, imageName, location);
+            }
+
+            Console.WriteLine($"\n✅ Successfully created container instance!");
+            Console.WriteLine($"   📍 Name: {containerGroup.Data.Name}");
+            Console.WriteLine($"   📍 Location: {containerGroup.Data.Location}");
+            Console.WriteLine($"   📍 State: {containerGroup.Data.ProvisioningState}");
+            Console.WriteLine($"   📍 IP Address: {containerGroup.Data.IPAddress?.IP}");
+            Console.WriteLine($"   📍 FQDN: {containerGroup.Data.IPAddress?.Fqdn}");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create container instance");
+            Console.WriteLine($"\n❌ Error: {ex.Message}");
+        }
+    }
+
+    static void DisplayACIDocumentation()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE CONTAINER INSTANCES - DOCUMENTATION");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📁 Implementation Files:");
+        Console.WriteLine("   • 03-ContainerInstances/ContainerInstanceManager.cs");
+        Console.WriteLine("   • 03-ContainerInstances/Examples/ACIScenarios.cs\n");
+
+        Console.WriteLine("🎯 USE CASES:\n");
+        Console.WriteLine("1. Batch Processing:");
+        Console.WriteLine("   • Process large datasets");
+        Console.WriteLine("   • Burst scaling for peak loads");
+        Console.WriteLine("   • Pay only for execution time\n");
+
+        Console.WriteLine("2. CI/CD Build Agents:");
+        Console.WriteLine("   • On-demand build environments");
+        Console.WriteLine("   • Isolated build containers");
+        Console.WriteLine("   • Fast startup (<1 second)\n");
+
+        Console.WriteLine("3. ML Model Inference:");
+        Console.WriteLine("   • GPU support (K80, P100, V100)");
+        Console.WriteLine("   • Batch predictions");
+        Console.WriteLine("   • Cost-effective for variable load\n");
+
+        Console.WriteLine("4. Sidecar Pattern:");
+        Console.WriteLine("   • Main + helper containers");
+        Console.WriteLine("   • Shared localhost network");
+        Console.WriteLine("   • Logging, monitoring, proxying\n");
+
+        Console.WriteLine("5. Data Processing Pipelines:");
+        Console.WriteLine("   • ETL workflows");
+        Console.WriteLine("   • File processing");
+        Console.WriteLine("   • Short-lived tasks\n");
+
+        Console.WriteLine("⚡ KEY FEATURES:\n");
+        Console.WriteLine("   ✓ Fast startup (sub-second)");
+        Console.WriteLine("   ✓ Per-second billing");
+        Console.WriteLine("   ✓ No cluster management");
+        Console.WriteLine("   ✓ GPU support");
+        Console.WriteLine("   ✓ VNet integration");
+        Console.WriteLine("   ✓ Azure Files mounting");
+        Console.WriteLine("   ✓ Multi-container groups\n");
+
+        Console.WriteLine("💰 PRICING:\n");
+        Console.WriteLine("   • Per vCPU per second");
+        Console.WriteLine("   • Per GB memory per second");
+        Console.WriteLine("   • Example: 1 vCPU + 1.5 GB = ~$40/month (continuous)");
+        Console.WriteLine("   • Perfect for burst workloads\n");
+
+        Console.WriteLine("📊 WHEN TO USE ACI:\n");
+        Console.WriteLine("   ✓ Short-lived workloads");
+        Console.WriteLine("   ✓ Burst scaling needed");
+        Console.WriteLine("   ✓ Simple deployments");
+        Console.WriteLine("   ✓ No orchestration required");
+        Console.WriteLine("   ✓ Isolated execution\n");
+
+        Console.WriteLine("   ❌ When NOT to use ACI:");
+        Console.WriteLine("   • Complex microservices → Use AKS or Container Apps");
+        Console.WriteLine("   • Long-running services → Use App Service or AKS");
+        Console.WriteLine("   • Service discovery needed → Use AKS with Kubernetes");
+    }
+```
+
+---
+
+## Add these methods for AKS:
+
+```csharp
+    // ADD THESE METHODS FOR AZURE KUBERNETES SERVICE
+
+    static async Task DisplayAksExamplesAsync(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE KUBERNETES SERVICE - PRODUCTION SCENARIOS");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        while (true)
+        {
+            Console.WriteLine("\n═══════════════════════════════════════════════════════════════");
+            Console.WriteLine("│  AKS DEMO OPTIONS:                                           │");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.WriteLine("│  1. Deploy Microservices                                     │");
+            Console.WriteLine("│  2. Horizontal Pod Autoscaling (HPA)                         │");
+            Console.WriteLine("│  3. Rolling Update Deployment                                │");
+            Console.WriteLine("│  4. Canary Deployment                                        │");
+            Console.WriteLine("│  5. Cluster Autoscaling                                      │");
+            Console.WriteLine("│  6. Multi-Region Deployment                                  │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  MANAGEMENT:                                                 │");
+            Console.WriteLine("│  7. Create AKS Cluster                                       │");
+            Console.WriteLine("│  8. View Documentation                                       │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  0. Back to Main Menu                                        │");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.Write("\nEnter your choice: ");
+
+            var choice = Console.ReadLine()?.Trim();
+
+            try
+            {
+                switch (choice)
+                {
+                    case "1":
+                        await AKSDeployMicroservicesDemo();
+                        break;
+                    case "2":
+                        await AKSHorizontalPodAutoscalingDemo();
+                        break;
+                    case "3":
+                        await AKSRollingUpdateDemo();
+                        break;
+                    case "4":
+                        await AKSCanaryDeploymentDemo();
+                        break;
+                    case "5":
+                        await AKSClusterAutoscalingDemo();
+                        break;
+                    case "6":
+                        await AKSMultiRegionDemo();
+                        break;
+                    case "7":
+                        await CreateAKSClusterDemo(logger, configuration);
+                        break;
+                    case "8":
+                        DisplayAKSDocumentation();
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        Console.WriteLine("\n❌ Invalid choice. Please try again.");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error in AKS demo");
+                Console.WriteLine($"\n❌ Error: {ex.Message}");
+            }
+
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+            Console.Clear();
+        }
+    }
+
+    static async Task AKSDeployMicroservicesDemo()
+    {
+        Console.Clear();
+        var result = await AZ204.AKS.Examples.AKSScenarios.DeployMicroservicesAsync();
+        Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task AKSHorizontalPodAutoscalingDemo()
+    {
+        Console.Clear();
+        var result = await AZ204.AKS.Examples.AKSScenarios.HorizontalPodAutoscalingAsync();
+        Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task AKSRollingUpdateDemo()
+    {
+        Console.Clear();
+        var result = await AZ204.AKS.Examples.AKSScenarios.RollingUpdateAsync();
+        Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task AKSCanaryDeploymentDemo()
+    {
+        Console.Clear();
+        var result = await AZ204.AKS.Examples.AKSScenarios.CanaryDeploymentAsync();
+        Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task AKSClusterAutoscalingDemo()
+    {
+        Console.Clear();
+        var result = await AZ204.AKS.Examples.AKSScenarios.ClusterAutoscalingAsync();
+        Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task AKSMultiRegionDemo()
+    {
+        Console.Clear();
+        var result = await AZ204.AKS.Examples.AKSScenarios.MultiRegionDeploymentAsync();
+        Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task CreateAKSClusterDemo(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  CREATE AKS CLUSTER");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        var subscriptionId = configuration["Azure:SubscriptionId"];
+        var resourceGroupName = configuration["Azure:ResourceGroup"];
+        var clusterName = configuration["AKS:ClusterName"];
+        var nodeCount = int.Parse(configuration["AKS:NodeCount"] ?? "3");
+        var vmSize = configuration["AKS:NodeVmSize"] ?? "Standard_DS2_v2";
+        var location = configuration["Azure:Location"] ?? "eastus";
+
+        Console.WriteLine("📋 Configuration from appsettings.json:");
+        Console.WriteLine($"   Subscription ID: {subscriptionId}");
+        Console.WriteLine($"   Resource Group: {resourceGroupName}");
+        Console.WriteLine($"   Cluster Name: {clusterName}");
+        Console.WriteLine($"   Node Count: {nodeCount}");
+        Console.WriteLine($"   VM Size: {vmSize}");
+        Console.WriteLine($"   Location: {location}\n");
+
+        if (string.IsNullOrEmpty(subscriptionId) || string.IsNullOrEmpty(resourceGroupName))
+        {
+            Console.WriteLine("\n❌ Configuration missing! Please check appsettings.json");
+            return;
+        }
+
+        Console.WriteLine("⚠️  Warning: Creating an AKS cluster takes 5-10 minutes and incurs costs.");
+        Console.Write("Continue? (yes/no): ");
+        if (Console.ReadLine()?.Trim().ToLower() != "yes")
+        {
+            Console.WriteLine("❌ Cancelled.");
+            return;
+        }
+
+        try
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            var aksLogger = loggerFactory.CreateLogger<AZ204.AKS.AksClusterManager>();
+            var aksManager = new AZ204.AKS.AksClusterManager(aksLogger);
+
+            Console.WriteLine("\n⏳ Creating AKS cluster (this will take 5-10 minutes)...\n");
+
+            var cluster = await aksManager.CreateAksClusterAsync(
+                subscriptionId, resourceGroupName, clusterName, location, nodeCount, vmSize);
+
+            Console.WriteLine($"\n✅ Successfully created AKS cluster!");
+            Console.WriteLine($"   📍 Name: {cluster.Data.Name}");
+            Console.WriteLine($"   📍 Location: {cluster.Data.Location}");
+            Console.WriteLine($"   📍 Kubernetes Version: {cluster.Data.CurrentKubernetesVersion}");
+            Console.WriteLine($"   📍 FQDN: {cluster.Data.Fqdn}");
+            Console.WriteLine($"   📍 Node Count: {nodeCount}");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create AKS cluster");
+            Console.WriteLine($"\n❌ Error: {ex.Message}");
+        }
+    }
+
+    static void DisplayAKSDocumentation()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE KUBERNETES SERVICE - DOCUMENTATION");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📁 Implementation Files:");
+        Console.WriteLine("   • 04-AKS/AksClusterManager.cs");
+        Console.WriteLine("   • 04-AKS/Examples/AKSScenarios.cs\n");
+
+        Console.WriteLine("🎯 PRODUCTION FEATURES:\n");
+        Console.WriteLine("1. Node Pools:");
+        Console.WriteLine("   • System pool (cluster services)");
+        Console.WriteLine("   • User pools (workloads)");
+        Console.WriteLine("   • Spot VMs (cost savings)");
+        Console.WriteLine("   • Availability zones\n");
+
+        Console.WriteLine("2. Scaling:");
+        Console.WriteLine("   • Horizontal Pod Autoscaler (HPA)");
+        Console.WriteLine("   • Cluster Autoscaler");
+        Console.WriteLine("   • KEDA (event-driven)");
+        Console.WriteLine("   • Custom metrics\n");
+
+        Console.WriteLine("3. Deployment Strategies:");
+        Console.WriteLine("   • Rolling updates");
+        Console.WriteLine("   • Blue-green deployments");
+        Console.WriteLine("   • Canary releases");
+        Console.WriteLine("   • A/B testing\n");
+
+        Console.WriteLine("4. Security:");
+        Console.WriteLine("   • Azure AD integration");
+        Console.WriteLine("   • Azure RBAC");
+        Console.WriteLine("   • Network policies");
+        Console.WriteLine("   • Pod Security Standards");
+        Console.WriteLine("   • Key Vault CSI Driver\n");
+
+        Console.WriteLine("5. Networking:");
+        Console.WriteLine("   • Azure CNI");
+        Console.WriteLine("   • Kubenet");
+        Console.WriteLine("   • Ingress controllers");
+        Console.WriteLine("   • Load balancers");
+        Console.WriteLine("   • Application Gateway\n");
+
+        Console.WriteLine("💰 COST OPTIMIZATION:\n");
+        Console.WriteLine("   • Use Spot VMs (60-80% savings)");
+        Console.WriteLine("   • Enable cluster autoscaler");
+        Console.WriteLine("   • Right-size node pools");
+        Console.WriteLine("   • Use Azure Reservations");
+        Console.WriteLine("   • Implement resource quotas\n");
+
+        Console.WriteLine("📊 WHEN TO USE AKS:\n");
+        Console.WriteLine("   ✓ Complex microservices");
+        Console.WriteLine("   ✓ Need full Kubernetes features");
+        Console.WriteLine("   ✓ Service mesh requirements");
+        Console.WriteLine("   ✓ Multi-cluster deployments");
+        Console.WriteLine("   ✓ Advanced networking\n");
+
+        Console.WriteLine("🔥 BEST PRACTICES:\n");
+        Console.WriteLine("   ✓ Separate system/user workloads");
+        Console.WriteLine("   ✓ Use availability zones");
+        Console.WriteLine("   ✓ Implement GitOps");
+        Console.WriteLine("   ✓ Enable monitoring");
+        Console.WriteLine("   ✓ Regular version upgrades");
+        Console.WriteLine("   ✓ Use namespaces effectively");
+    }
+```
+
+---
+
+## Finally, replace the old static methods:
+
+Find and replace the old `DisplayContainerInstancesExamples()` and `DisplayAksExamples()` methods with these compatibility stubs:
+
+```csharp
+    static void DisplayContainerInstancesExamples()
+    {
+        // Replaced by DisplayContainerInstancesExamplesAsync
+        Console.WriteLine("Please use the async version");
+    }
+
+    static void DisplayAksExamples()
+    {
+        // Replaced by DisplayAksExamplesAsync
+        Console.WriteLine("Please use the async version");
+    }
+```

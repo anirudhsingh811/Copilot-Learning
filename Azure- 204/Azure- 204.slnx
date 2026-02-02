@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="AZ204-RealFunctions/AZ204-RealFunctions.csproj" />
+  <Project Path="Azure- 204/Azure- 204.csproj" />
+  <Project Path="Azure-204-Module2-Storage/Azure-204-Module2-Storage.csproj" />
+  <Project Path="Azure-204-Module3-Security/Azure-204-Module3-Security.csproj" />
+  <Project Path="Azure-204-Module4-Monitoring/Azure-204-Module4-Monitoring.csproj" />
+  <Project Path="Azure-204-Module5-Integration/Azure-204-Module5-Integration.csproj" />
+  <Project Path="SimpleWebApp/SimpleWebApp.csproj" />
+</Solution>

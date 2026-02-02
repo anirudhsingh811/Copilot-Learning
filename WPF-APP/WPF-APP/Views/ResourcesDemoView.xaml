@@ -1,0 +1,103 @@
+﻿<UserControl x:Class="WPF_APP.Views.ResourcesDemoView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    
+    <UserControl.Resources>
+        <!-- Static Resources -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#007ACC"/>
+        <sys:Double x:Key="StandardFontSize">14</sys:Double>
+        <Thickness x:Key="StandardMargin">10</Thickness>
+        
+        <!-- Dynamic Resource -->
+        <SolidColorBrush x:Key="DynamicBrush" Color="Green"/>
+    </UserControl.Resources>
+    
+    <StackPanel>
+        <TextBlock Text="Resources Demo" FontSize="24" FontWeight="Bold" Margin="0,0,0,20"/>
+        
+        <TextBlock Text="Key Concepts:" FontWeight="Bold" Margin="0,0,0,10"/>
+        <TextBlock TextWrapping="Wrap" Margin="0,0,0,20">
+            - StaticResource vs DynamicResource<LineBreak/>
+            - Resource dictionaries<LineBreak/>
+            - Merged dictionaries<LineBreak/>
+            - Resource lookup hierarchy<LineBreak/>
+            - Application-level resources<LineBreak/>
+            - Resource scoping
+        </TextBlock>
+        
+        <TextBlock Text="StaticResource vs DynamicResource:" FontWeight="Bold" Margin="0,0,0,10"/>
+        <TextBlock TextWrapping="Wrap" Margin="0,0,0,20">
+            - <Bold>StaticResource:</Bold> Resolved once at XAML load time. Better performance, most common.<LineBreak/>
+            - <Bold>DynamicResource:</Bold> Re-evaluated when resource changes. Used for themes, runtime changes.<LineBreak/>
+            - StaticResource throws exception if not found; DynamicResource uses default.<LineBreak/>
+            - DynamicResource has slight performance overhead.
+        </TextBlock>
+        
+        <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock Text="StaticResource Example" FontWeight="Bold" Margin="0,0,0,10"/>
+                <Border Background="{StaticResource PrimaryBrush}" Padding="20" Margin="{StaticResource StandardMargin}">
+                    <TextBlock Text="Using StaticResource for Background" 
+                              Foreground="White"
+                              FontSize="{StaticResource StandardFontSize}"/>
+                </Border>
+            </StackPanel>
+        </Border>
+        
+        <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock Text="DynamicResource Example" FontWeight="Bold" Margin="0,0,0,10"/>
+                <Border Background="{DynamicResource DynamicBrush}" Padding="20" Margin="10">
+                    <TextBlock Text="Using DynamicResource (updates at runtime)" 
+                              Foreground="White" FontSize="14"/>
+                </Border>
+                <Button Content="Change Dynamic Color" Click="ChangeDynamicResource_Click"
+                       Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+        
+        <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock Text="Resource Hierarchy" FontWeight="Bold" Margin="0,0,0,10"/>
+                <TextBlock TextWrapping="Wrap" Margin="0,0,0,10">
+                    Resources are searched in this order:<LineBreak/>
+                    1. Local element resources<LineBreak/>
+                    2. Parent element resources (up the visual tree)<LineBreak/>
+                    3. Window/Page resources<LineBreak/>
+                    4. Application resources<LineBreak/>
+                    5. System resources
+                </TextBlock>
+                
+                <Border BorderBrush="Blue" BorderThickness="2" Padding="10">
+                    <Border.Resources>
+                        <SolidColorBrush x:Key="LocalBrush" Color="Purple"/>
+                    </Border.Resources>
+                    <StackPanel>
+                        <TextBlock Text="This border has local resources" Foreground="Gray" FontSize="11"/>
+                        <Border Background="{StaticResource LocalBrush}" Padding="15" Margin="0,5,0,0">
+                            <TextBlock Text="Using local resource 'LocalBrush'" 
+                                      Foreground="White" FontWeight="Bold"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+        
+        <Border BorderBrush="LightGray" BorderThickness="1" Padding="15">
+            <StackPanel>
+                <TextBlock Text="Best Practices" FontWeight="Bold" Margin="0,0,0,10"/>
+                <TextBlock TextWrapping="Wrap">
+                    - Use StaticResource by default (better performance)<LineBreak/>
+                    - Use DynamicResource for theming and runtime changes<LineBreak/>
+                    - Place common resources in Application.Resources<LineBreak/>
+                    - Use Resource Dictionaries for organization<LineBreak/>
+                    - Use x:Key for explicit resources<LineBreak/>
+                    - Implicit styles (no x:Key) apply to all controls of that type
+                </TextBlock>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>
+
+

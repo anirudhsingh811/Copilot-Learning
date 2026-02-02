@@ -1,0 +1,4 @@
+C:\Users\INASING7\source\repos\WPF-APP\WPF-APP\obj\Debug\net10.0\WPF-APP.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\INASING7\source\repos\WPF-APP\WPF-APP\obj\Debug\net10.0\WPF-APP.AssemblyInfoInputs.cache
+C:\Users\INASING7\source\repos\WPF-APP\WPF-APP\obj\Debug\net10.0\WPF-APP.AssemblyInfo.cs
+C:\Users\INASING7\source\repos\WPF-APP\WPF-APP\obj\Debug\net10.0\WPF-APP.csproj.CoreCompileInputs.cache

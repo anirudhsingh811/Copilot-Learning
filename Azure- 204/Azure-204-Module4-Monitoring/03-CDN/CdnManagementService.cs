@@ -1,0 +1,362 @@
+using Azure;
+using Azure.Core;
+using Azure.Identity;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Cdn;
+using Azure.ResourceManager.Cdn.Models;
+using Azure.ResourceManager.Resources;
+using Microsoft.Extensions.Logging;
+
+namespace AZ204.Monitoring.CDN;
+
+/// <summary>
+/// Real Azure CDN management implementation
+/// Demonstrates CDN profile management, endpoint configuration, and content purging
+/// </summary>
+public class CdnManagementService
+{
+    private readonly ArmClient _armClient;
+    private readonly ILogger<CdnManagementService> _logger;
+
+    public CdnManagementService(ILogger<CdnManagementService> logger)
+    {
+        _logger = logger;
+        _armClient = new ArmClient(new DefaultAzureCredential());
+        Console.WriteLine("? CDN Management client initialized");
+    }
+
+    /// <summary>
+    /// Create a CDN profile
+    /// </summary>
+    public async Task<ProfileResource?> CreateCdnProfileAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string profileName,
+        string location = "global",
+        string skuName = "Standard_Microsoft")
+    {
+        try
+        {
+            _logger.LogInformation("Creating CDN profile: {ProfileName}", profileName);
+            Console.WriteLine($"\n?? Creating CDN Profile: {profileName}");
+            Console.WriteLine($"   SKU: {skuName}");
+            Console.WriteLine($"   Location: {location}");
+
+            var subscription = _armClient.GetSubscriptionResource(
+                new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+            
+            var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName);
+            
+            var profileData = new ProfileData(location, new CdnSku { Name = new CdnSkuName(skuName) });
+            
+            var profileCollection = resourceGroup.Value.GetProfiles();
+            var operation = await profileCollection.CreateOrUpdateAsync(
+                WaitUntil.Completed,
+                profileName,
+                profileData);
+
+            Console.WriteLine($"? CDN Profile created: {operation.Value.Data.Name}");
+            return operation.Value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create CDN profile");
+            Console.WriteLine($"? Failed to create CDN profile: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Create a CDN endpoint
+    /// </summary>
+    public async Task<CdnEndpointResource?> CreateCdnEndpointAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string profileName,
+        string endpointName,
+        string originHostName)
+    {
+        try
+        {
+            _logger.LogInformation("Creating CDN endpoint: {EndpointName}", endpointName);
+            Console.WriteLine($"\n?? Creating CDN Endpoint: {endpointName}");
+            Console.WriteLine($"   Origin: {originHostName}");
+
+            var subscription = _armClient.GetSubscriptionResource(
+                new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+            
+            var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName);
+            var profileCollection = resourceGroup.Value.GetProfiles();
+            var profile = await profileCollection.GetAsync(profileName);
+
+            var endpointData = new CdnEndpointData("global")
+            {
+                IsHttpAllowed = true,
+                IsHttpsAllowed = true,
+                IsCompressionEnabled = true,
+                QueryStringCachingBehavior = QueryStringCachingBehavior.IgnoreQueryString,
+                Origins =
+                {
+                    new DeepCreatedOrigin("origin1")
+                    {
+                        HostName = originHostName,
+                        HttpPort = 80,
+                        HttpsPort = 443
+                    }
+                },
+                ContentTypesToCompress =
+                {
+                    "text/plain",
+                    "text/html",
+                    "text/css",
+                    "application/javascript",
+                    "application/json"
+                }
+            };
+
+            var endpointCollection = profile.Value.GetCdnEndpoints();
+            var operation = await endpointCollection.CreateOrUpdateAsync(
+                WaitUntil.Completed,
+                endpointName,
+                endpointData);
+
+            Console.WriteLine($"? CDN Endpoint created");
+            Console.WriteLine($"   Endpoint URL: {operation.Value.Data.HostName}");
+            
+            return operation.Value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create CDN endpoint");
+            Console.WriteLine($"? Failed to create CDN endpoint: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Purge CDN endpoint content
+    /// </summary>
+    public async Task<bool> PurgeCdnContentAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string profileName,
+        string endpointName,
+        List<string> contentPaths)
+    {
+        try
+        {
+            _logger.LogInformation("Purging CDN content for endpoint: {EndpointName}", endpointName);
+            Console.WriteLine($"\n???  Purging CDN Content");
+            Console.WriteLine($"   Endpoint: {endpointName}");
+            Console.WriteLine($"   Paths: {string.Join(", ", contentPaths)}");
+
+            var subscription = _armClient.GetSubscriptionResource(
+                new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+            
+            var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName);
+            var profileCollection = resourceGroup.Value.GetProfiles();
+            var profile = await profileCollection.GetAsync(profileName);
+            var endpointCollection = profile.Value.GetCdnEndpoints();
+            var endpoint = await endpointCollection.GetAsync(endpointName);
+
+            var purgeContent = new PurgeContent(contentPaths);
+            await endpoint.Value.PurgeContentAsync(WaitUntil.Completed, purgeContent);
+
+            Console.WriteLine($"? Content purged successfully");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to purge CDN content");
+            Console.WriteLine($"? Failed to purge content: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Get CDN endpoint statistics
+    /// </summary>
+    public async Task GetCdnStatisticsAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string profileName,
+        string endpointName)
+    {
+        try
+        {
+            Console.WriteLine($"\n?? CDN Endpoint Statistics");
+            Console.WriteLine($"   Endpoint: {endpointName}");
+            Console.WriteLine("???????????????????????????????????????");
+
+            var subscription = _armClient.GetSubscriptionResource(
+                new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+            
+            var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName);
+            var profileCollection = resourceGroup.Value.GetProfiles();
+            var profile = await profileCollection.GetAsync(profileName);
+            var endpointCollection = profile.Value.GetCdnEndpoints();
+            var endpoint = await endpointCollection.GetAsync(endpointName);
+
+            var endpointData = endpoint.Value.Data;
+            
+            Console.WriteLine($"\n  Status: {endpointData.ResourceState}");
+            Console.WriteLine($"  Host Name: {endpointData.HostName}");
+            Console.WriteLine($"  Origin Host: {endpointData.Origins.FirstOrDefault()?.HostName}");
+            Console.WriteLine($"  HTTP Enabled: {endpointData.IsHttpAllowed}");
+            Console.WriteLine($"  HTTPS Enabled: {endpointData.IsHttpsAllowed}");
+            Console.WriteLine($"  Compression Enabled: {endpointData.IsCompressionEnabled}");
+            Console.WriteLine($"  Query String Caching: {endpointData.QueryStringCachingBehavior}");
+            
+            if (endpointData.ContentTypesToCompress.Any())
+            {
+                Console.WriteLine($"\n  Compressed Content Types:");
+                foreach (var contentType in endpointData.ContentTypesToCompress)
+                {
+                    Console.WriteLine($"    • {contentType}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get CDN statistics");
+            Console.WriteLine($"? Failed to get statistics: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// List all CDN endpoints in a profile
+    /// </summary>
+    public async Task<List<CdnEndpointResource>> ListCdnEndpointsAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string profileName)
+    {
+        try
+        {
+            Console.WriteLine($"\n?? Listing CDN Endpoints for profile: {profileName}");
+            Console.WriteLine("???????????????????????????????????????");
+
+            var subscription = _armClient.GetSubscriptionResource(
+                new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+            
+            var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName);
+            var profileCollection = resourceGroup.Value.GetProfiles();
+            var profile = await profileCollection.GetAsync(profileName);
+            
+            var endpoints = new List<CdnEndpointResource>();
+            await foreach (var endpoint in profile.Value.GetCdnEndpoints())
+            {
+                endpoints.Add(endpoint);
+                Console.WriteLine($"\n  ?? {endpoint.Data.Name}");
+                Console.WriteLine($"     URL: {endpoint.Data.HostName}");
+                Console.WriteLine($"     Status: {endpoint.Data.ResourceState}");
+            }
+
+            Console.WriteLine($"\n? Total endpoints: {endpoints.Count}");
+            return endpoints;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to list CDN endpoints");
+            Console.WriteLine($"? Failed to list endpoints: {ex.Message}");
+            return new List<CdnEndpointResource>();
+        }
+    }
+
+    /// <summary>
+    /// Demonstrate CDN best practices
+    /// </summary>
+    public void ShowCdnBestPractices()
+    {
+        Console.WriteLine("\n?? CDN Best Practices");
+        Console.WriteLine("?????????????????????????????????????????????????????????????");
+        
+        var practices = new[]
+        {
+            ("Enable Compression", "Reduce bandwidth and improve load times", "? Compresses text-based files (HTML, CSS, JS)"),
+            ("Use HTTPS Only", "Security and SEO benefits", "? Better Google rankings, secure content"),
+            ("Set Cache Headers", "Control caching behavior", "? Use Cache-Control and Expires headers"),
+            ("Optimize Images", "Resize and compress before uploading", "? WebP format, responsive images"),
+            ("Use Query String Caching", "Cache different versions", "? Useful for versioning (style.css?v=1.2)"),
+            ("Implement Geo-Filtering", "Restrict content by geography", "? Compliance and licensing requirements"),
+            ("Monitor Performance", "Track CDN metrics", "? Use Azure Monitor for CDN analytics"),
+            ("Purge Stale Content", "Remove outdated content", "? Use purge API or portal"),
+            ("Set TTL Appropriately", "Balance freshness and performance", "? Static: 1 year, Dynamic: minutes/hours"),
+            ("Use Custom Domains", "Branding and trust", "? cdn.yourdomain.com instead of azureedge.net")
+        };
+
+        foreach (var (title, description, benefit) in practices)
+        {
+            Console.WriteLine($"\n?? {title}");
+            Console.WriteLine($"   ?? {description}");
+            Console.WriteLine($"   {benefit}");
+        }
+
+        Console.WriteLine("\n\n?? CDN Use Cases:");
+        Console.WriteLine("???????????????????????????????????????");
+        Console.WriteLine("  • Static website hosting");
+        Console.WriteLine("  • Media streaming (video, audio)");
+        Console.WriteLine("  • Software distribution (downloads)");
+        Console.WriteLine("  • API acceleration");
+        Console.WriteLine("  • Mobile app content delivery");
+        Console.WriteLine("  • Gaming asset distribution");
+        Console.WriteLine("  • E-commerce product images");
+    }
+
+    /// <summary>
+    /// Demonstrate CDN configuration scenarios
+    /// </summary>
+    public void ShowCdnConfigurations()
+    {
+        Console.WriteLine("\n??  CDN Configuration Scenarios");
+        Console.WriteLine("?????????????????????????????????????????????????????????????");
+
+        var scenarios = new[]
+        {
+            ("Static Website", new[]
+            {
+                "Origin: Azure Storage Static Website",
+                "Compression: Enabled",
+                "HTTPS: Required",
+                "Cache TTL: 1 year for images/CSS/JS",
+                "Query String: Ignore"
+            }),
+            
+            ("Video Streaming", new[]
+            {
+                "Origin: Azure Media Services",
+                "Compression: Disabled (already compressed)",
+                "HTTPS: Required",
+                "Cache TTL: 1 hour",
+                "Geo-filtering: Based on licensing"
+            }),
+            
+            ("API Acceleration", new[]
+            {
+                "Origin: App Service / AKS",
+                "Compression: Enabled for JSON responses",
+                "HTTPS: Required",
+                "Cache TTL: 5 minutes",
+                "Query String: Use query string (different responses)"
+            }),
+            
+            ("Software Downloads", new[]
+            {
+                "Origin: Azure Blob Storage",
+                "Compression: Disabled (executables)",
+                "HTTPS: Required",
+                "Cache TTL: 30 days",
+                "Query String: Ignore"
+            })
+        };
+
+        foreach (var (scenario, configs) in scenarios)
+        {
+            Console.WriteLine($"\n?? {scenario}");
+            foreach (var config in configs)
+            {
+                Console.WriteLine($"   • {config}");
+            }
+        }
+    }
+}

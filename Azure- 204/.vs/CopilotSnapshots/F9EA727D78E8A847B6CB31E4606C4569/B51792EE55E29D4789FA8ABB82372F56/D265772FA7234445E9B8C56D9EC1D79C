@@ -1,0 +1,106 @@
+﻿using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.AddHealthChecks();
+
+// Add Key Vault client (optional - only if you want to read secrets)
+var keyVaultUri = builder.Configuration["KeyVault:Uri"];
+if (!string.IsNullOrEmpty(keyVaultUri))
+{
+    builder.Services.AddSingleton<SecretClient>(sp =>
+    {
+        var credential = new DefaultAzureCredential();
+        return new SecretClient(new Uri(keyVaultUri), credential);
+    });
+}
+
+var app = builder.Build();
+
+// Configure middleware
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// Health check endpoint
+app.MapHealthChecks("/health");
+
+// Root endpoint
+app.MapGet("/", () => new
+{
+    message = "Welcome to AZ-204 Study App!",
+    timestamp = DateTime.UtcNow,
+    environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production",
+    machineName = Environment.MachineName
+})
+.WithName("GetRoot")
+.WithOpenApi();
+
+// Info endpoint
+app.MapGet("/api/info", () => new
+{
+    appName = "AZ-204 Web App",
+    version = "1.0.0",
+    framework = Environment.Version.ToString(),
+    osVersion = Environment.OSVersion.ToString(),
+    processorCount = Environment.ProcessorCount
+})
+.WithName("GetInfo")
+.WithOpenApi();
+
+// Environment variables endpoint
+app.MapGet("/api/env", () =>
+{
+    var envVars = new Dictionary<string, string>
+    {
+        { "ASPNETCORE_ENVIRONMENT", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Not Set" },
+        { "WEBSITE_SITE_NAME", Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME") ?? "Not Set" },
+        { "WEBSITE_INSTANCE_ID", Environment.GetEnvironmentVariable("WEBSITE_INSTANCE_ID") ?? "Not Set" },
+        { "REGION_NAME", Environment.GetEnvironmentVariable("REGION_NAME") ?? "Not Set" }
+    };
+    return Results.Ok(envVars);
+})
+.WithName("GetEnvironment")
+.WithOpenApi();
+
+// Test endpoint with query parameters
+app.MapGet("/api/echo/{message}", (string message) => new
+{
+    echo = message,
+    length = message.Length,
+    uppercase = message.ToUpper(),
+    timestamp = DateTime.UtcNow
+})
+.WithName("Echo")
+.WithOpenApi();
+
+// Key Vault secret endpoint (optional)
+app.MapGet("/api/secrets", async (SecretClient? secretClient) =>
+{
+    if (secretClient == null)
+    {
+        return Results.Ok(new { message = "Key Vault not configured" });
+    }
+
+    try
+    {
+        var secret = await secretClient.GetSecretAsync("ApiKey");
+        return Results.Ok(new
+        {
+            message = "Secret loaded successfully",
+            secretName = "ApiKey",
+            secretValue = secret.Value.Value.Substring(0, Math.Min(10, secret.Value.Value.Length)) + "..."
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to load secret: {ex.Message}");
+    }
+})
+.WithName("GetSecrets")
+.WithOpenApi();
+
+app.Run();

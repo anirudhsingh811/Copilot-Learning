@@ -1,0 +1,41 @@
+@page
+@model ReactAPP.Pages.ReactInterviewModel
+@{
+    ViewData["Title"] = "React Interview Questions";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - React Learning App</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">React Learning</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/">Home</a>
+                <a class="nav-link" href="/ReactLearning">Fundamentals</a>
+                <a class="nav-link" href="/ReactAdvanced">Advanced</a>
+                <a class="nav-link active" href="/ReactInterview">Interview Q&A</a>
+            </div>
+        </div>
+    </nav>
+
+    <div id="root-interview"></div>
+
+    <!-- React and ReactDOM from CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel Standalone for JSX transformation -->
+    <script src="https://unpkg.com/@@babel/standalone/babel.min.js"></script>
+    
+    <!-- Your React App -->
+    <script type="text/babel" src="~/react-app/interview-questions.jsx"></script>
+</body>
+</html>

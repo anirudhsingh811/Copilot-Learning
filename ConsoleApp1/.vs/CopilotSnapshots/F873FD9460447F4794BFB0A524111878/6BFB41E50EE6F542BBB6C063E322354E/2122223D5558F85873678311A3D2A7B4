@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.13.1" />
+    <PackageReference Include="Azure.ResourceManager" Version="1.13.0" />
+    <PackageReference Include="Azure.ResourceManager.AppService" Version="1.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="AzureDemos\01-ComputeSolutions\" />
+    <Folder Include="AzureAppService\" />
+  </ItemGroup>
+
+  <!-- Include Azure App Service example files in the project -->
+  <ItemGroup>
+    <None Include="AzureAppService\**\*" />
+  </ItemGroup>
+
+  <!-- Exclude C# files that are examples only (not to be compiled) -->
+  <ItemGroup>
+    <Compile Remove="AzureAppService\7-WebApp.cs" />
+    <Compile Remove="AzureAppService\8-WebApp-Program.cs" />
+    <Compile Remove="AzureAppService\9-AspNetCore-Startup.cs" />
+  </ItemGroup>
+
+</Project>

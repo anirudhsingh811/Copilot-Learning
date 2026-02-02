@@ -1,0 +1,49 @@
+# ============================================
+# Azure App Service - Creation and Management
+# ============================================
+
+# Variables
+$resourceGroup="myResourceGroup"
+$location="eastus"
+$appServicePlan="myAppServicePlan"
+$webAppName="myuniquewebapp$(Get-Random)"
+
+# 1. Create a Resource Group
+az group create `
+  --name $resourceGroup `
+  --location $location
+
+# 2. Create an App Service Plan
+# SKU options: F1 (Free), B1 (Basic), S1 (Standard), P1V2 (Premium V2), P1V3 (Premium V3)
+az appservice plan create `
+  --name $appServicePlan `
+  --resource-group $resourceGroup `
+  --location $location `
+  --sku B1 `
+  --is-linux
+
+# 3. Create a Web App
+az webapp create `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --plan $appServicePlan `
+  --runtime "DOTNET|8.0"
+
+# 4. Update Web App Configuration
+az webapp config set `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --always-on true `
+  --http20-enabled true `
+  --min-tls-version 1.2
+
+# 5. Get Web App Details
+az webapp show `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --output table
+
+# 6. Browse to the Web App
+az webapp browse `
+  --name $webAppName `
+  --resource-group $resourceGroup

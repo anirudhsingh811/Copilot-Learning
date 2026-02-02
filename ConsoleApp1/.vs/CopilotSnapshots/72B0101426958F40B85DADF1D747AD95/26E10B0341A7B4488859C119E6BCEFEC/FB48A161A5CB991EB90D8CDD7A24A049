@@ -1,0 +1,289 @@
+﻿// ============================================
+// Azure App Service Management Class - REFERENCE EXAMPLE
+// ============================================
+// NOTE: This is a REFERENCE file showing the structure of App Service management
+// The Azure SDK APIs shown here may need adjustments based on the SDK version
+// 
+// For WORKING examples, use the Azure CLI scripts (*.azcli files) which are
+// production-ready and can be executed immediately
+// ============================================
+
+using Azure.Identity;
+using Azure.ResourceManager;
+using Azure.ResourceManager.AppService;
+using Azure.ResourceManager.AppService.Models;
+using Azure.ResourceManager.Resources;
+using System;
+using System.Threading.Tasks;
+
+namespace AzureAppServiceExamples
+{
+    /// <summary>
+    /// Azure App Service management using Azure SDK for .NET
+    /// NOTE: This is a reference implementation. Some APIs may need updates.
+    /// For production use, refer to official Azure SDK documentation.
+    /// </summary>
+    public class AppServiceManager
+    {
+        private readonly ArmClient _armClient;
+        private readonly string _subscriptionId;
+
+        public AppServiceManager(string subscriptionId)
+        {
+            _subscriptionId = subscriptionId;
+            _armClient = new ArmClient(new DefaultAzureCredential());
+        }
+
+        /// <summary>
+        /// Create a new App Service with App Service Plan
+        /// </summary>
+        public async Task<WebSiteResource> CreateWebAppAsync(
+            string resourceGroupName,
+            string appServicePlanName,
+            string webAppName,
+            string location = "eastus")
+        {
+            // Get subscription and resource group
+            var subscription = await _armClient.GetSubscriptionResource(
+                new Azure.Core.ResourceIdentifier($"/subscriptions/{_subscriptionId}")
+            ).GetAsync();
+            
+            var resourceGroup = await subscription.Value.GetResourceGroups()
+                .GetAsync(resourceGroupName);
+
+            // Create App Service Plan
+            var appServicePlanCollection = resourceGroup.Value.GetAppServicePlans();
+            var appServicePlanData = new AppServicePlanData(location)
+            {
+                Sku = new AppServiceSkuDescription
+                {
+                    Name = "B1",
+                    Tier = "Basic",
+                    Capacity = 1
+                },
+                Kind = "linux",
+                IsReserved = true
+            };
+
+            var appServicePlanOperation = await appServicePlanCollection
+                .CreateOrUpdateAsync(
+                    Azure.WaitUntil.Completed,
+                    appServicePlanName,
+                    appServicePlanData
+                );
+            var appServicePlan = appServicePlanOperation.Value;
+
+            Console.WriteLine($"App Service Plan '{appServicePlanName}' created.");
+
+            // Create Web App
+            var webSiteCollection = resourceGroup.Value.GetWebSites();
+            var webSiteData = new WebSiteData(location)
+            {
+                AppServicePlanId = appServicePlan.Id,
+                HttpsOnly = true,
+                SiteConfig = new SiteConfigProperties
+                {
+                    LinuxFxVersion = "DOTNETCORE|8.0"
+                }
+            };
+
+            var webSiteOperation = await webSiteCollection
+                .CreateOrUpdateAsync(
+                    Azure.WaitUntil.Completed,
+                    webAppName,
+                    webSiteData
+                );
+
+            Console.WriteLine($"Web App '{webAppName}' created.");
+            Console.WriteLine($"URL: https://{webAppName}.azurewebsites.net");
+
+            return webSiteOperation.Value;
+        }
+
+        /// <summary>
+        /// Configure App Settings
+        /// </summary>
+        public async Task ConfigureAppSettingsAsync(
+            string resourceGroupName,
+            string webAppName)
+        {
+            var subscription = await _armClient.GetSubscriptionResource(
+                new Azure.Core.ResourceIdentifier($"/subscriptions/{_subscriptionId}")
+            ).GetAsync();
+            
+            var resourceGroup = await subscription.Value.GetResourceGroups()
+                .GetAsync(resourceGroupName);
+            
+            var webApp = await resourceGroup.Value.GetWebSites()
+                .GetAsync(webAppName);
+
+            // Update app settings using StringDictionary
+            var appSettings = new Azure.ResourceManager.AppService.Models.AppServiceConfigurationDictionary();
+            appSettings.Properties.Add("CUSTOM_SETTING", "MyValue");
+            appSettings.Properties.Add("ENVIRONMENT", "Production");
+            appSettings.Properties.Add("API_KEY", "your-api-key");
+
+            var configResource = webApp.Value.GetWebSiteConfig();
+            await configResource.CreateOrUpdateApplicationSettingsAsync(
+                Azure.WaitUntil.Completed,
+                appSettings
+            );
+
+            Console.WriteLine("App settings configured successfully.");
+        }
+
+        /// <summary>
+        /// Scale App Service Plan
+        /// </summary>
+        public async Task ScaleAppServicePlanAsync(
+            string resourceGroupName,
+            string appServicePlanName,
+            string skuName = "S1",
+            int capacity = 2)
+        {
+            var subscription = await _armClient.GetSubscriptionResource(
+                new Azure.Core.ResourceIdentifier($"/subscriptions/{_subscriptionId}")
+            ).GetAsync();
+            
+            var resourceGroup = await subscription.Value.GetResourceGroups()
+                .GetAsync(resourceGroupName);
+            
+            var appServicePlan = await resourceGroup.Value.GetAppServicePlans()
+                .GetAsync(appServicePlanName);
+
+            var patchData = new AppServicePlanPatchOptions
+            {
+                Sku = new AppServiceSkuDescription
+                {
+                    Name = skuName,
+                    Capacity = capacity
+                }
+            };
+
+            await appServicePlan.Value.UpdateAsync(patchData);
+
+            Console.WriteLine($"App Service Plan scaled to {skuName} with {capacity} instances.");
+        }
+
+        /// <summary>
+        /// Create Deployment Slot
+        /// </summary>
+        public async Task<WebSiteSlotResource> CreateDeploymentSlotAsync(
+            string resourceGroupName,
+            string webAppName,
+            string slotName)
+        {
+            var subscription = await _armClient.GetSubscriptionResource(
+                new Azure.Core.ResourceIdentifier($"/subscriptions/{_subscriptionId}")
+            ).GetAsync();
+            
+            var resourceGroup = await subscription.Value.GetResourceGroups()
+                .GetAsync(resourceGroupName);
+            
+            var webApp = await resourceGroup.Value.GetWebSites()
+                .GetAsync(webAppName);
+
+            var slotCollection = webApp.Value.GetWebSiteSlots();
+            var slotData = new WebSiteData(webApp.Value.Data.Location)
+            {
+                AppServicePlanId = webApp.Value.Data.AppServicePlanId,
+                SiteConfig = new SiteConfigProperties()
+            };
+
+            var slotOperation = await slotCollection.CreateOrUpdateAsync(
+                Azure.WaitUntil.Completed,
+                slotName,
+                slotData
+            );
+
+            Console.WriteLine($"Deployment slot '{slotName}' created.");
+            return slotOperation.Value;
+        }
+
+        /// <summary>
+        /// Swap Deployment Slots
+        /// </summary>
+        public async Task SwapDeploymentSlotsAsync(
+            string resourceGroupName,
+            string webAppName,
+            string sourceSlot = "staging",
+            string targetSlot = "production")
+        {
+            var subscription = await _armClient.GetSubscriptionResource(
+                new Azure.Core.ResourceIdentifier($"/subscriptions/{_subscriptionId}")
+            ).GetAsync();
+            
+            var resourceGroup = await subscription.Value.GetResourceGroups()
+                .GetAsync(resourceGroupName);
+            
+            var webApp = await resourceGroup.Value.GetWebSites()
+                .GetAsync(webAppName);
+
+            var swapParameters = new CsmSlotEntity(targetSlot, preserveVnet: true);
+
+            if (sourceSlot == "production")
+            {  
+                await webApp.Value.SwapSlotWithProductionAsync(Azure.WaitUntil.Completed, swapParameters);
+            }
+            else
+            {
+                var slot = await webApp.Value.GetWebSiteSlots().GetAsync(sourceSlot);
+                await slot.Value.SwapSlotWithProductionSlotAsync(Azure.WaitUntil.Completed, swapParameters);
+            }
+
+            Console.WriteLine($"Swapped '{sourceSlot}' with '{targetSlot}'.");
+        }
+
+        /// <summary>
+        /// Enable Managed Identity
+        /// </summary>
+        public async Task EnableManagedIdentityAsync(
+            string resourceGroupName,
+            string webAppName)
+        {
+            var subscription = await _armClient.GetSubscriptionResource(
+                new Azure.Core.ResourceIdentifier($"/subscriptions/{_subscriptionId}")
+            ).GetAsync();
+            
+            var resourceGroup = await subscription.Value.GetResourceGroups()
+                .GetAsync(resourceGroupName);
+            
+            var webApp = await resourceGroup.Value.GetWebSites()
+                .GetAsync(webAppName);
+
+            var patchInfo = new Azure.ResourceManager.AppService.Models.SitePatchInfo
+            {
+                Identity = new Azure.ResourceManager.Models.ManagedServiceIdentity(
+                    Azure.ResourceManager.Models.ManagedServiceIdentityType.SystemAssigned
+                )
+            };
+
+            await webApp.Value.UpdateAsync(patchInfo);
+
+            Console.WriteLine("Managed Identity enabled for the Web App.");
+        }
+
+        /// <summary>
+        /// Get Web App Metrics
+        /// </summary>
+        public async Task GetWebAppMetricsAsync(
+            string resourceGroupName,
+            string webAppName)
+        {
+            var subscription = await _armClient.GetSubscriptionResource(
+                new Azure.Core.ResourceIdentifier($"/subscriptions/{_subscriptionId}")
+            ).GetAsync();
+            
+            var resourceGroup = await subscription.Value.GetResourceGroups()
+                .GetAsync(resourceGroupName);
+            
+            var webApp = await resourceGroup.Value.GetWebSites()
+                .GetAsync(webAppName);
+
+            Console.WriteLine($"Web App: {webApp.Value.Data.Name}");
+            Console.WriteLine($"State: {webApp.Value.Data.State}");
+            Console.WriteLine($"Default Hostname: {webApp.Value.Data.DefaultHostName}");
+            Console.WriteLine($"Outbound IP Addresses: {webApp.Value.Data.OutboundIPAddresses}");
+        }
+    }
+}

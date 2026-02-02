@@ -1,0 +1,59 @@
+# ============================================
+# Azure App Service - Authentication & Authorization
+# ============================================
+
+$resourceGroup="myResourceGroup"
+$webAppName="myuniquewebapp"
+$tenantId="your-tenant-id"
+$clientId="your-client-id"
+$clientSecret="your-client-secret"
+
+# 1. Enable Azure AD Authentication
+az webapp auth update `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --enabled true `
+  --action LoginWithAzureActiveDirectory `
+  --aad-allowed-token-audiences "https://$webAppName.azurewebsites.net" `
+  --aad-client-id $clientId `
+  --aad-client-secret $clientSecret `
+  --aad-tenant-id $tenantId
+
+# 2. Configure Microsoft Identity Provider
+az webapp auth microsoft update `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --client-id $clientId `
+  --client-secret $clientSecret `
+  --tenant-id $tenantId
+
+# 3. Show Authentication Settings
+az webapp auth show `
+  --name $webAppName `
+  --resource-group $resourceGroup
+
+# 4. Configure Token Store (for storing tokens)
+az webapp auth update `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --token-store true
+
+# 5. Set Allowed External Redirect URLs
+az webapp auth update `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --allowed-external-redirect-urls "https://myapp.com/callback"
+
+# 6. Configure Google Authentication (Alternative)
+# First, get credentials from Google Cloud Console
+az webapp auth update `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --enabled true `
+  --action LoginWithGoogle
+
+# 7. Disable Authentication
+az webapp auth update `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --enabled false

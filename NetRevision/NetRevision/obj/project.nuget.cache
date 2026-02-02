@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "QWZUl9zvHys=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\INASING7\\source\\repos\\NetRevision\\NetRevision\\NetRevision.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\INASING7\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\9.0.0\\microsoft.extensions.dependencyinjection.9.0.0.nupkg.sha512",
+    "C:\\Users\\INASING7\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\9.0.0\\microsoft.extensions.dependencyinjection.abstractions.9.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

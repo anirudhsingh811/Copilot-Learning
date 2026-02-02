@@ -1,0 +1,285 @@
+﻿# ?? Deployment Scripts - README
+
+## ? What Changed?
+
+**Before:** One large `deploy-all-services.ps1` script that deployed everything at once.
+
+**Now:** 7 separate scripts - deploy one service at a time!
+
+---
+
+## ?? The Scripts
+
+| # | Script | Purpose | Time | Cost |
+|---|--------|---------|------|------|
+| 0 | `deploy-0-setup.ps1` | **Setup** - Create resource group, generate names | 2 min | Free |
+| 1 | `deploy-1-appservice.ps1` | **App Service** - Web apps, slots, auto-scaling | 5 min | $2/day |
+| 2 | `deploy-2-functions.ps1` | **Functions** - Serverless (Consumption + Premium) | 5 min | $0-5/day |
+| 3 | `deploy-3-container-instances.ps1` | **ACI** - Simple containers | 2 min | $1/day |
+| 4 | `deploy-4-aks.ps1` | **AKS** - Kubernetes (OPTIONAL) | 20 min | $150/mo ?? |
+| 5 | `deploy-5-supporting-services.ps1` | **Supporting** - Redis, Cosmos, etc. (OPTIONAL) | 15 min | $2/day |
+| 6 | `deploy-6-output-config.ps1` | **Output** - Generate appsettings.json | 2 min | Free |
+
+---
+
+## ?? Quick Start
+
+### First Time (Minimum Path)
+```powershell
+.\deploy-0-setup.ps1              # ? Start here!
+.\deploy-1-appservice.ps1
+.\deploy-2-functions.ps1
+.\deploy-6-output-config.ps1      # ? Get your config!
+```
+
+### Full Experience
+```powershell
+.\deploy-0-setup.ps1              # Setup
+.\deploy-1-appservice.ps1         # App Service
+.\deploy-2-functions.ps1          # Functions
+.\deploy-3-container-instances.ps1 # Containers
+.\deploy-4-aks.ps1                # Kubernetes (optional)
+.\deploy-5-supporting-services.ps1 # Supporting (optional)
+.\deploy-6-output-config.ps1      # Get config
+```
+
+---
+
+## ?? How It Works
+
+### 1. Setup Creates Shared Config
+`deploy-0-setup.ps1` creates `deployment-config.json`:
+```json
+{
+  "ResourceGroup": "rg-az204-compute",
+  "RandomSuffix": "7823",
+  "ResourceNames": {
+    "WebApp": "webapp-az204-7823",
+    "FunctionApp": "func-az204-7823",
+    ...
+  }
+}
+```
+
+### 2. Other Scripts Load Config
+Each script reads `deployment-config.json` to get resource names.
+
+### 3. Interactive Learning
+Before each command:
+- See explanation
+- See the actual CLI command
+- Press Enter to execute
+- See success/failure
+
+---
+
+## ?? Why Separate Scripts?
+
+| Benefit | Description |
+|---------|-------------|
+| **Learn One Service at a Time** | Focus on App Service, then Functions, etc. |
+| **Choose What to Deploy** | Skip expensive services like AKS |
+| **Understand Each Command** | See exactly what each CLI command does |
+| **Save Money** | Only deploy what you need |
+| **Resume Later** | Deploy App Service today, Functions tomorrow |
+
+---
+
+## ?? Learning Objectives
+
+### Script 0: Setup
+- ? Resource Groups
+- ? Naming conventions
+- ? Resource uniqueness
+
+### Script 1: App Service
+- ? App Service Plans
+- ? Web Apps
+- ? Deployment Slots
+- ? Auto-scaling
+- ? Application Insights
+
+### Script 2: Functions
+- ? Storage requirements
+- ? Consumption vs Premium
+- ? Cold starts
+- ? Managed Identity
+
+### Script 3: Container Instances
+- ? Fast container startup
+- ? Pay per second
+- ? Simple deployments
+
+### Script 4: AKS (Optional)
+- ? Kubernetes basics
+- ? Node pools
+- ? Auto-scaling
+- ? kubectl commands
+
+### Script 5: Supporting (Optional)
+- ? Key Vault for secrets
+- ? Redis for caching
+- ? Service Bus for messaging
+- ? Cosmos DB for NoSQL
+
+### Script 6: Output
+- ? Connection strings
+- ? Configuration management
+- ? appsettings.json
+
+---
+
+## ??? Troubleshooting
+
+### Script fails with "config not found"
+```powershell
+# Must run setup first:
+.\deploy-0-setup.ps1
+```
+
+### Want to start over?
+```powershell
+# Delete everything:
+az group delete --name rg-az204-compute --yes
+
+# Then run setup again:
+.\deploy-0-setup.ps1
+```
+
+### Deployment fails midway
+- Script will ask "Continue? (Y/N)"
+- Choose Y to skip failed resource
+- Or choose N to stop and investigate
+
+### Check what's deployed
+```powershell
+az resource list --resource-group rg-az204-compute --output table
+```
+
+---
+
+## ?? Files Created
+
+- `deployment-config.json` - Shared configuration (created by script 0)
+- `appsettings-generated.json` - Your app configuration (created by script 6)
+
+---
+
+## ?? Cleanup
+
+Delete ALL resources at once:
+```powershell
+az group delete --name rg-az204-compute --yes --no-wait
+```
+
+---
+
+## ?? Cost Breakdown
+
+### Minimum Path (~$2/day)
+- App Service S1: $2.30/day
+- Functions Consumption: $0.00/day
+- Total: ~$2/day
+
+### Core Services (~$3/day)
+- App Service S1: $2.30/day
+- Functions Premium: $5/day
+- Container Instance: $1/day
+- Total: ~$3/day
+
+### Everything (~$10/day)
+- App Service: $2.30/day
+- Functions Premium: $5/day
+- Container Instance: $1/day
+- AKS (3 nodes): $150/month (~$5/day)
+- Redis Basic: $0.50/day
+- Cosmos DB: $1/day
+- Service Bus: $0.05/day
+- Total: ~$10/day
+
+---
+
+## ?? Recommended Learning Path
+
+### Week 1: Core Services
+- Day 1: Run scripts 0, 1, 6 (App Service)
+- Day 2: Run script 2 (Functions)
+- Day 3: Run script 3 (Containers)
+- Day 4: Explore Azure Portal
+- Day 5: Clean up, review learnings
+
+### Week 2: Advanced (Optional)
+- Day 1: Run script 4 (AKS)
+- Day 2: Deploy apps to AKS
+- Day 3: Run script 5 (Supporting services)
+- Day 4: Integrate services
+- Day 5: Clean up
+
+---
+
+## ? Success Indicators
+
+You'll know you're successful when you can:
+- ? Explain what a Resource Group is
+- ? Describe the difference between App Service Plan and Web App
+- ? Compare Consumption vs Premium Functions
+- ? Understand deployment slots
+- ? Configure auto-scaling
+- ? Use Managed Identity
+- ? Deploy containers
+- ? Generate connection strings
+- ? Update appsettings.json
+
+---
+
+## ?? Next Steps After Deployment
+
+1. **Copy config to appsettings.json**
+   ```powershell
+   # Script 6 generates this for you!
+   Get-Content appsettings-generated.json
+   ```
+
+2. **Explore in Azure Portal**
+   - Visit https://portal.azure.com
+   - Find your resource group
+   - Click through each resource
+
+3. **Deploy your app**
+   ```powershell
+   # To App Service:
+   az webapp deploy --name <web-app-name> --src-path ./app.zip
+   
+   # To Functions:
+   func azure functionapp publish <function-app-name>
+   ```
+
+4. **Test your services**
+   - Visit your web app URL
+   - Check Application Insights
+   - View container logs
+
+5. **Clean up**
+   ```powershell
+   az group delete --name rg-az204-compute --yes
+   ```
+
+---
+
+## ?? Documentation
+
+- **QUICKSTART.md** - Quick start guide
+- **README.md** - Main project documentation
+- **install-prerequisites.ps1** - Check/install prerequisites
+
+---
+
+## ?? You're Ready!
+
+Start with:
+```powershell
+az login
+.\deploy-0-setup.ps1
+```
+
+Take your time, read each explanation, and learn! ??

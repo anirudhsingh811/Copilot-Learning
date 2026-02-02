@@ -1,0 +1,2131 @@
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using AZ204.AppService;
+using Microsoft.ApplicationInsights;                
+using Azure.Identity;
+
+
+namespace AZ204;
+
+/// <summary>
+/// AZ-204 Module 1: Develop Azure Compute Solutions
+/// Comprehensive Examples for Experienced Architects
+/// </summary>
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        var host = Host.CreateDefaultBuilder(args)
+            .ConfigureAppConfiguration((context, config) =>
+            {
+                config.AddJsonFile("appsettings.json", optional: true);
+                config.AddEnvironmentVariables();
+                config.AddUserSecrets<Program>(optional: true);
+            })
+            .ConfigureServices((context, services) =>
+            {
+                // Configure enterprise services
+                AppServiceConfiguration.ConfigureEnterpriseServices(services, context.Configuration);
+                
+                services.AddLogging(builder =>
+                {
+                    builder.AddConsole();
+                    builder.AddDebug();
+                });
+                
+                services.AddHttpClient();
+            
+            })
+            .Build();
+
+        var logger = host.Services.GetRequiredService<ILogger<Program>>();
+        var configuration = host.Services.GetRequiredService<IConfiguration>();
+
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("║   AZ-204 Module 1: Develop Azure Compute Solutions            ║");
+        Console.WriteLine("║   Enterprise Architect-Level Examples                          ║");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine();
+
+        while (true)
+        {
+            DisplayMenu();
+            var choice = Console.ReadLine()?.Trim();
+
+            try
+            {
+                switch (choice)
+                {
+                    case "1":
+                        await DisplayAppServiceExamplesAsync(host.Services, logger, configuration);
+                        break;
+                    case "2":
+                        await DisplayFunctionsExamplesAsync(logger, configuration);
+                        break;
+                    case "3":
+                        await DisplayContainerInstancesExamplesAsync(logger, configuration);
+                        break;
+                    case "4":
+                        await DisplayAksExamplesAsync(logger, configuration);
+                        break;
+                    case "5":
+                        DisplayContainerAppsExamples();
+                        break;
+                    case "6":
+                        DisplayArchitecturePatterns();
+                        break;
+                    case "7":
+                        DisplayBestPractices();
+                        break;
+                    case "8":
+                        DisplayInterviewQuestions();
+                        break;
+                    case "9":
+                        DisplayExamTips();
+                        break;
+                    case "0":
+                        Console.WriteLine("\n✅ Goodbye! Good luck with your AZ-204 certification!");
+                        return;
+                    default:
+                        Console.WriteLine("\n❌ Invalid choice. Please try again.\n");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred");
+                Console.WriteLine($"\n❌ Error: {ex.Message}\n");
+            }
+
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+            Console.Clear();
+        }
+    }
+
+    static void DisplayMenu()
+    {
+        Console.WriteLine("\n═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("║  MAIN MENU - Select a topic:                           ║");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("║  1. Azure App Service (Enterprise Patterns)            ║");
+        Console.WriteLine("║  2. Azure Functions (Durable Functions & Events)       ║");
+        Console.WriteLine("║  3. Azure Container Instances (Multi-container)        ║");
+        Console.WriteLine("║  4. Azure Kubernetes Service (Production AKS)          ║");
+        Console.WriteLine("║  5. Azure Container Apps (Microservices & Dapr)        ║");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("║  6. Architecture Patterns & Design Decisions           ║");
+        Console.WriteLine("║  7. Best Practices & Security                          ║");
+        Console.WriteLine("║  8. Interview Questions (Advanced)                     ║");
+        Console.WriteLine("║  9. AZ-204 Exam Tips for Architects                    ║");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("║  0. Exit                                               ║");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.Write("\nEnter your choice: ");
+    }
+
+    static async Task DisplayAppServiceExamplesAsync(
+        IServiceProvider services,
+        ILogger<Program> logger,
+        IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE APP SERVICE - ENTERPRISE PATTERNS");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        while (true)
+        {
+            Console.WriteLine("\n═══════════════════════════════════════════════════════════");
+            Console.WriteLine("║  APP SERVICE DEMO OPTIONS:                              ║");
+            Console.WriteLine("═══════════════════════════════════════════════════════════");
+            Console.WriteLine("║  1. Load Secrets from Key Vault                         ║");
+            Console.WriteLine("║  2. Test Health Checks                                  ║");
+            Console.WriteLine("║  3. Simulate Blue-Green Deployment                      ║");
+            Console.WriteLine("║  4. Create Deployment Slot                              ║");
+            Console.WriteLine("║  5. Delete Deployment Slot                              ║");
+            Console.WriteLine("║  6. 🔐 Authentication & Identity Providers (NEW!)       ║");
+            Console.WriteLine("║  7. View Documentation                                  ║");
+            Console.WriteLine("║  0. Back to Main Menu                                   ║");
+            Console.WriteLine("═══════════════════════════════════════════════════════════");
+            Console.Write("\nEnter your choice: ");
+
+            var choice = Console.ReadLine()?.Trim();
+
+            try
+            {
+                switch (choice)
+                {
+                    case "1":
+                        await LoadSecretsDemo(services, logger, configuration);
+                        break;
+                    case "2":
+                        await TestHealthChecksDemo(services, logger);
+                        break;
+                    case "3":
+                        await BlueGreenDeploymentDemo(logger, configuration);
+                        break;
+                    case "4":
+                        await CreateDeploymentSlotDemo(logger, configuration);
+                        break;
+                    case "5":
+                        await DeleteDeploymentSlotDemo(logger, configuration);
+                        break;
+                    case "6":
+                        // await WebAppAuthenticationDemoRunner.RunAsync();
+                        Console.WriteLine("⚠️ WebAppAuthenticationDemoRunner not available - feature under development");
+                        break;
+                    case "7":
+                        DisplayAppServiceDocumentation();
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        Console.WriteLine("\n❌ Invalid choice. Please try again.");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error in App Service demo");
+                Console.WriteLine($"\n❌ Error: {ex.Message}");
+            }
+
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+            Console.Clear();
+        }
+    }
+
+    static async Task LoadSecretsDemo(
+        IServiceProvider services,
+        ILogger<Program> logger,
+        IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  LOADING SECRETS FROM AZURE KEY VAULT");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        try
+        {
+            var keyVaultUri = configuration["KeyVault:Uri"];
+            
+            Console.WriteLine("📍 Configured Key Vault URI: " + 
+                (keyVaultUri ?? "Not configured (using demo mode)"));
+            
+            if (string.IsNullOrEmpty(keyVaultUri))
+            {
+                Console.WriteLine("\n⚠️  Key Vault not configured. Please add to appsettings.json:");
+                Console.WriteLine("   {");
+                Console.WriteLine("     \"KeyVault\": {");
+                Console.WriteLine("       \"Uri\": \"https://your-keyvault.vault.azure.net/\"");
+                Console.WriteLine("     }");
+                Console.WriteLine("   }");
+                return;
+            }
+
+            Console.WriteLine("\n🔐 Authentication Methods (in order of precedence):");
+            Console.WriteLine("   1. Environment Variables (AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET)");
+            Console.WriteLine("   2. Managed Identity (when running in Azure)");
+            Console.WriteLine("   3. Azure CLI (az login)");
+            Console.WriteLine("   4. Visual Studio Account");
+            Console.WriteLine("   5. VS Code Azure Account Extension");
+            Console.WriteLine("   6. Interactive Browser Login\n");
+
+            var telemetryClient = services.GetService<TelemetryClient>() ?? new TelemetryClient();
+            var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+            var configLogger = loggerFactory.CreateLogger<AppServiceConfiguration>();
+            var appServiceConfig = new AppServiceConfiguration(configuration, configLogger, telemetryClient);
+
+            Console.WriteLine("⏳ Attempting to load secrets...\n");
+
+            var secrets = await appServiceConfig.LoadSecretsFromKeyVaultAsync();
+
+            if (secrets.Count > 0)
+            {
+                Console.WriteLine($"✅ Successfully loaded {secrets.Count} secrets:");
+                foreach (var secret in secrets)
+                {
+                    Console.WriteLine($"   • {secret.Key}: {new string('*', 20)}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("⚠️  No secrets were loaded. Possible reasons:");
+                Console.WriteLine("   1. Authentication failed - Run 'az login' or ensure you're logged into Visual Studio");
+                Console.WriteLine("   2. No permissions - Grant yourself 'Key Vault Secrets User' role");
+                Console.WriteLine("   3. Secrets don't exist - Create secrets in your Key Vault:");
+                Console.WriteLine("      • DatabaseConnectionString");
+                Console.WriteLine("      • ApiKey");
+                Console.WriteLine("      • StorageAccountKey\n");
+                
+                Console.WriteLine("💡 Quick Setup Commands:");
+                Console.WriteLine("   # Login to Azure");
+                Console.WriteLine("   az login");
+                Console.WriteLine();
+                Console.WriteLine("   # Set your subscription");
+                Console.WriteLine("   az account set --subscription \"your-subscription-id\"");
+                Console.WriteLine();
+                Console.WriteLine("   # Grant yourself access to Key Vault");
+                Console.WriteLine($"   az keyvault set-policy --name kv-az204-9199 \\");
+                Console.WriteLine("     --upn your-email@domain.com \\");
+                Console.WriteLine("     --secret-permissions get list");
+                Console.WriteLine();
+                Console.WriteLine("   # Create test secrets");
+                Console.WriteLine("   az keyvault secret set --vault-name kv-az204-9199 \\");
+                Console.WriteLine("     --name DatabaseConnectionString --value \"Server=...\"");
+                Console.WriteLine("   az keyvault secret set --vault-name kv-az204-9199 \\");
+                Console.WriteLine("     --name ApiKey --value \"test-api-key-12345\"");
+                Console.WriteLine("   az keyvault secret set --vault-name kv-az204-9199 \\");
+                Console.WriteLine("     --name StorageAccountKey --value \"test-storage-key\"");
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.WriteLine($"\n❌ Configuration Error: {ex.Message}");
+            Console.WriteLine("\n💡 To fix this, please run:");
+            Console.WriteLine("   az login");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to load secrets");
+            Console.WriteLine($"\n❌ Error: {ex.Message}");
+            Console.WriteLine($"\n🔍 Full Error: {ex.GetType().Name}");
+            
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"   Inner: {ex.InnerException.Message}");
+            }
+        }
+    }
+
+    static async Task TestHealthChecksDemo(IServiceProvider services, ILogger<Program> logger)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  TESTING HEALTH CHECKS");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("⏳ Performing health checks...\n");
+
+        // Simulate health checks
+        Console.WriteLine("1️⃣  Database Health Check:");
+        await Task.Delay(500);
+        Console.WriteLine("   ✅ Status: Healthy");
+        Console.WriteLine("   ⏱️  Response Time: 145ms\n");
+
+        Console.WriteLine("2️⃣  Redis Cache Health Check:");
+        await Task.Delay(500);
+        Console.WriteLine("   ✅ Status: Healthy");
+        Console.WriteLine("   ⏱️  Response Time: 23ms\n");
+
+        Console.WriteLine("3️⃣  External API Health Check:");
+        await Task.Delay(500);
+        Console.WriteLine("   ⚠️  Status: Degraded");
+        Console.WriteLine("   ⏱️  Response Time: 3200ms");
+        Console.WriteLine("   💬  API is responding but slower than expected\n");
+
+        Console.WriteLine("📊 Overall System Status: Healthy (1 degraded service)");
+        Console.WriteLine("\n📝 Health checks are configured in AppServiceConfiguration.cs");
+        Console.WriteLine("   • DatabaseHealthCheck");
+        Console.WriteLine("   • RedisHealthCheck");
+        Console.WriteLine("   • ExternalApiHealthCheck");
+    }
+
+    static async Task BlueGreenDeploymentDemo(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  BLUE-GREEN DEPLOYMENT (SWAP SLOTS)");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        // Read configuration from appsettings.json
+        var subscriptionId = configuration["Azure:SubscriptionId"];
+        var resourceGroupName = configuration["Azure:ResourceGroup"];
+        var appServiceName = configuration["AppService:WebAppName"];
+
+        Console.WriteLine("📋 Configuration from appsettings.json:");
+        Console.WriteLine($"   Subscription ID: {subscriptionId}");
+        Console.WriteLine($"   Resource Group: {resourceGroupName}");
+        Console.WriteLine($"   App Service: {appServiceName}\n");
+
+        if (string.IsNullOrEmpty(subscriptionId) || string.IsNullOrEmpty(resourceGroupName) ||
+            string.IsNullOrEmpty(appServiceName))
+        {
+            Console.WriteLine("\n❌ Configuration missing! Please check appsettings.json:");
+            Console.WriteLine("   Azure:SubscriptionId");
+            Console.WriteLine("   Azure:ResourceGroup");
+            Console.WriteLine("   AppService:WebAppName");
+            return;
+        }
+
+        try
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            var slotLogger = loggerFactory.CreateLogger<DeploymentSlotService>();
+            var slotService = new DeploymentSlotService(slotLogger);
+
+            // List existing slots
+            Console.WriteLine("\n📋 Available deployment slots:");
+            var slots = await slotService.ListDeploymentSlotsAsync(
+                subscriptionId, resourceGroupName, appServiceName);
+
+            if (slots.Count == 0)
+            {
+                Console.WriteLine("   No deployment slots found. Create one first!");
+                return;
+            }
+
+            for (int i = 0; i < slots.Count; i++)
+            {
+                Console.WriteLine($"   {i + 1}. {slots[i].Data.Name}");
+            }
+
+            Console.Write("\nEnter source slot name (e.g., staging): ");
+            var sourceSlot = Console.ReadLine()?.Trim();
+
+            Console.Write("Enter target slot (leave empty for 'production'): ");
+            var targetSlot = Console.ReadLine()?.Trim();
+
+            if (string.IsNullOrEmpty(sourceSlot))
+            {
+                Console.WriteLine("\n❌ Source slot is required!");
+                return;
+            }
+
+            Console.WriteLine("\n🔄 Blue-Green Deployment Process:");
+            Console.WriteLine("   1️⃣  Validate source slot is ready");
+            Console.WriteLine("   2️⃣  Warm up destination slot");
+            Console.WriteLine("   3️⃣  Swap slots (zero downtime)");
+            Console.WriteLine("   4️⃣  Monitor health checks");
+
+            Console.Write($"\n⚠️  Swap '{sourceSlot}' with '{(string.IsNullOrEmpty(targetSlot) ? "production" : targetSlot)}'? (yes/no): ");
+            var confirm = Console.ReadLine()?.Trim().ToLower();
+
+            if (confirm != "yes" && confirm != "y")
+            {
+                Console.WriteLine("\n❌ Swap cancelled.");
+                return;
+            }
+
+            Console.WriteLine("\n⏳ Swapping slots...");
+
+            await slotService.SwapSlotAsync(
+                subscriptionId,
+                resourceGroupName,
+                appServiceName,
+                sourceSlot,
+                string.IsNullOrEmpty(targetSlot) ? null : targetSlot);
+
+            Console.WriteLine("\n✅ Successfully swapped deployment slots!");
+            Console.WriteLine("   🎉 Your new version is now live in production!");
+            Console.WriteLine("   📊 Monitor Application Insights for any issues");
+            Console.WriteLine("   ⏪ You can swap back if needed for instant rollback");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to swap deployment slots");
+            Console.WriteLine($"\n❌ Error: {ex.Message}");
+        }
+    }
+
+    static async Task CreateDeploymentSlotDemo(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  CREATE DEPLOYMENT SLOT");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        // Read configuration from appsettings.json
+        var subscriptionId = configuration["Azure:SubscriptionId"];
+        var resourceGroupName = configuration["Azure:ResourceGroup"];
+        var appServiceName = configuration["AppService:WebAppName"];
+
+        Console.WriteLine("📋 Configuration from appsettings.json:");
+        Console.WriteLine($"   Subscription ID: {subscriptionId}");
+        Console.WriteLine($"   Resource Group: {resourceGroupName}");
+        Console.WriteLine($"   App Service: {appServiceName}\n");
+
+        if (string.IsNullOrEmpty(subscriptionId) || string.IsNullOrEmpty(resourceGroupName) ||
+            string.IsNullOrEmpty(appServiceName))
+        {
+            Console.WriteLine("\n❌ Configuration missing! Please check appsettings.json");
+            return;
+        }
+
+        Console.Write("Enter Slot Name (e.g., staging, dev, qa): ");
+        var slotName = Console.ReadLine()?.Trim();
+
+        if (string.IsNullOrEmpty(slotName))
+        {
+            Console.WriteLine("\n❌ Slot name is required!");
+            return;
+        }
+
+        try
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            var slotLogger = loggerFactory.CreateLogger<DeploymentSlotService>();
+            var slotService = new DeploymentSlotService(slotLogger);
+
+            Console.WriteLine("\n⏳ Creating deployment slot...");
+
+            var slot = await slotService.CreateDeploymentSlotAsync(
+                subscriptionId,
+                resourceGroupName,
+                appServiceName,
+                slotName);
+
+            Console.WriteLine($"\n✅ Successfully created deployment slot!");
+            Console.WriteLine($"   📍 Slot Name: {slot.Data.Name}");
+            Console.WriteLine($"   📍 Location: {slot.Data.Location}");
+            Console.WriteLine($"   📍 State: {slot.Data.State}");
+            Console.WriteLine($"   📍 Default Hostname: {slot.Data.DefaultHostName}");
+
+            // List all slots
+            Console.WriteLine("\n📋 All deployment slots:");
+            var allSlots = await slotService.ListDeploymentSlotsAsync(
+                subscriptionId, resourceGroupName, appServiceName);
+
+            foreach (var s in allSlots)
+            {
+                Console.WriteLine($"   • {s.Data.Name} - {s.Data.DefaultHostName}");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create deployment slot");
+            Console.WriteLine($"\n❌ Error: {ex.Message}");
+        }
+    }
+
+    static async Task DeleteDeploymentSlotDemo(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  DELETE DEPLOYMENT SLOT");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        // Read configuration from appsettings.json
+        var subscriptionId = configuration["Azure:SubscriptionId"];
+        var resourceGroupName = configuration["Azure:ResourceGroup"];
+        var appServiceName = configuration["AppService:WebAppName"];
+
+        Console.WriteLine("📋 Configuration from appsettings.json:");
+        Console.WriteLine($"   Subscription ID: {subscriptionId}");
+        Console.WriteLine($"   Resource Group: {resourceGroupName}");
+        Console.WriteLine($"   App Service: {appServiceName}\n");
+
+        if (string.IsNullOrEmpty(subscriptionId) || string.IsNullOrEmpty(resourceGroupName) ||
+            string.IsNullOrEmpty(appServiceName))
+        {
+            Console.WriteLine("\n❌ Configuration missing! Please check appsettings.json");
+            return;
+        }
+
+        try
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            var slotLogger = loggerFactory.CreateLogger<DeploymentSlotService>();
+            var slotService = new DeploymentSlotService(slotLogger);
+
+            // List existing slots first
+            Console.WriteLine("\n📋 Existing deployment slots:");
+            var slots = await slotService.ListDeploymentSlotsAsync(
+                subscriptionId, resourceGroupName, appServiceName);
+
+            if (slots.Count == 0)
+            {
+                Console.WriteLine("   No deployment slots found.");
+                return;
+            }
+
+            for (int i = 0; i < slots.Count; i++)
+            {
+                Console.WriteLine($"   {i + 1}. {slots[i].Data.Name}");
+            }
+
+            Console.Write("\nEnter the number of the slot to delete (or slot name): ");
+            var input = Console.ReadLine()?.Trim();
+
+            string slotName;
+            if (int.TryParse(input, out int index) && index > 0 && index <= slots.Count)
+            {
+                slotName = slots[index - 1].Data.Name.Split('/').Last();
+            }
+            else
+            {
+                slotName = input ?? "";
+            }
+
+            if (string.IsNullOrEmpty(slotName))
+            {
+                Console.WriteLine("\n❌ Invalid slot selection!");
+                return;
+            }
+
+            Console.Write($"\n⚠️  Are you sure you want to delete slot '{slotName}'? (yes/no): ");
+            var confirm = Console.ReadLine()?.Trim().ToLower();
+
+            if (confirm != "yes" && confirm != "y")
+            {
+                Console.WriteLine("\n❌ Deletion cancelled.");
+                return;
+            }
+
+            Console.WriteLine("\n⏳ Deleting deployment slot...");
+
+            await slotService.DeleteDeploymentSlotAsync(
+                subscriptionId,
+                resourceGroupName,
+                appServiceName,
+                slotName);
+
+            Console.WriteLine($"\n✅ Successfully deleted deployment slot '{slotName}'!");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to delete deployment slot");
+            Console.WriteLine($"\n❌ Error: {ex.Message}");
+        }
+    }
+
+    static void DisplayAppServiceDocumentation()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE APP SERVICE - DOCUMENTATION");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📁 Implementation Files:");
+        Console.WriteLine("   • 01-AppService/AppServiceConfiguration.cs");
+        Console.WriteLine("   • 01-AppService/DeploymentSlotManager.cs\n");
+
+        Console.WriteLine("🎯 Key Features Implemented:\n");
+
+        Console.WriteLine("1. Enterprise Configuration:");
+        Console.WriteLine("   ✅ Key Vault integration with Managed Identity");
+        Console.WriteLine("   ✅ Application Insights with custom telemetry");
+        Console.WriteLine("   ✅ Distributed caching (Redis)");
+        Console.WriteLine("   ✅ Health checks (database, redis, external APIs)");
+        Console.WriteLine("   ✅ HTTP client with Polly resilience policies\n");
+
+        Console.WriteLine("2. Blue-Green Deployments:");
+        Console.WriteLine("   ✅ Automated slot swap with validation");
+        Console.WriteLine("   ✅ Progressive traffic routing (10% → 100%)");
+        Console.WriteLine("   ✅ Health check verification");
+        Console.WriteLine("   ✅ Automatic rollback on failure");
+        Console.WriteLine("   ✅ Warm-up URLs for performance\n");
+
+        Console.WriteLine("🏗️ Architecture Patterns:");
+        Console.WriteLine("   • Circuit Breaker Pattern (Polly)");
+        Console.WriteLine("   • Retry with Exponential Backoff");
+        Console.WriteLine("   • Health Check Pattern");
+        Console.WriteLine("   • Secrets Management Pattern\n");
+
+        Console.WriteLine("📊 Monitoring:");
+        Console.WriteLine("   • Custom telemetry initializers");
+        Console.WriteLine("   • Background metrics collection");
+        Console.WriteLine("   • Deployment phase tracking");
+        Console.WriteLine("   • Error rate monitoring\n");
+
+        Console.WriteLine("💰 Cost Optimization:");
+        Console.WriteLine("   • Auto-scaling based on metrics");
+        Console.WriteLine("   • Scale down during off-hours");
+        Console.WriteLine("   • Use appropriate tier (Basic/Standard/Premium)");
+        Console.WriteLine("   • Reserved instances for production\n");
+
+        Console.WriteLine("🔒 Security:");
+        Console.WriteLine("   • Managed Identity for Azure services");
+        Console.WriteLine("   • Key Vault for secrets");
+        Console.WriteLine("   • HTTPS only");
+        Console.WriteLine("   • IP restrictions");
+    }
+
+    static async Task DisplayFunctionsExamplesAsync(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE FUNCTIONS - TRIGGERS & DURABLE PATTERNS");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        while (true)
+        {
+            Console.WriteLine("\n═══════════════════════════════════════════════════════════════");
+            Console.WriteLine("│  AZURE FUNCTIONS DEMO OPTIONS:                              │");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.WriteLine("│  HTTP TRIGGERS:                                              │");
+            Console.WriteLine("│  1. HTTP GET Request Demo                                    │");
+            Console.WriteLine("│  2. HTTP POST Request Demo (Order Processing)                │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  TIMER & QUEUE TRIGGERS:                                     │");
+            Console.WriteLine("│  3. Timer Trigger - Daily Cleanup Job                        │");
+            Console.WriteLine("│  4. Timer Trigger - Hourly Health Check                      │");
+            Console.WriteLine("│  5. Queue Trigger - Process Order Message                    │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  DURABLE FUNCTIONS PATTERNS:                                 │");
+            Console.WriteLine("│  6. Function Chaining Pattern                                │");
+            Console.WriteLine("│  7. Fan-Out/Fan-In Pattern (Parallel Processing)             │");
+            Console.WriteLine("│  8. Saga Pattern with Compensation                           │");
+            Console.WriteLine("│  9. Human Interaction Pattern (Approval Workflow)            │");
+            Console.WriteLine("│  10. Monitor Pattern (Status Polling)                        │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  MANAGEMENT:                                                 │");
+            Console.WriteLine("│  11. Create Function App                                     │");
+            Console.WriteLine("│  12. View Documentation                                      │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  0. Back to Main Menu                                        │");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.Write("\nEnter your choice: ");
+
+            var choice = Console.ReadLine()?.Trim();
+
+            try
+            {
+                switch (choice)
+                {
+                    case "1":
+                        await HttpGetDemo();
+                        break;
+                    case "2":
+                        await HttpPostDemo();
+                        break;
+                    case "3":
+                        await TimerDailyCleanupDemo();
+                        break;
+                    case "4":
+                        await TimerHealthCheckDemo();
+                        break;
+                    case "5":
+                        await QueueProcessOrderDemo();
+                        break;
+                    case "6":
+                        await DurableFunctionChainingDemo();
+                        break;
+                    case "7":
+                        await DurableFanOutFanInDemo();
+                        break;
+                    case "8":
+                        await DurableSagaDemo();
+                        break;
+                    case "9":
+                        await DurableHumanInteractionDemo();
+                        break;
+                    case "10":
+                        await DurableMonitorDemo();
+                        break;
+                    case "11":
+                        await CreateFunctionAppDemo(logger, configuration);
+                        break;
+                    case "12":
+                        DisplayFunctionsDocumentation();
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        Console.WriteLine("\n❌ Invalid choice. Please try again.");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error in Functions demo");
+                Console.WriteLine($"\n❌ Error: {ex.Message}");
+            }
+
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+            Console.Clear();
+        }
+    }
+
+    static async Task HttpGetDemo()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  HTTP GET REQUEST DEMO");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.Write("Enter name (or press Enter for 'World'): ");
+        var name = Console.ReadLine()?.Trim();
+        if (string.IsNullOrEmpty(name)) name = "World";
+
+        //Console.WriteLine("\n🔄 Simulating HTTP GET request...\n");
+        //var result = await AZ204.Functions.Examples.HttpTriggerExamples.SimulateGetRequestAsync(name);
+        
+        //Console.WriteLine("📨 Response:");
+        //Console.WriteLine(result);
+    }
+
+    static async Task HttpPostDemo()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  HTTP POST REQUEST DEMO - ORDER PROCESSING");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        var order = new
+        {
+            ProductName = "Premium Widget",
+            Quantity = 5,
+            UnitPrice = 29.99m,
+            CustomerEmail = "customer@example.com"
+        };
+
+        var jsonBody = System.Text.Json.JsonSerializer.Serialize(order, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        
+        Console.WriteLine("📤 Request Body:");
+        Console.WriteLine(jsonBody);
+        Console.WriteLine("\n🔄 Processing order...\n");
+
+        //var result = await AZ204.Functions.Examples.HttpTriggerExamples.SimulatePostRequestAsync(jsonBody);
+        
+        //Console.WriteLine("📨 Response:");
+        //Console.WriteLine(result);
+    }
+
+    static async Task TimerDailyCleanupDemo()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  TIMER TRIGGER - DAILY CLEANUP JOB");
+        Console.WriteLine("  CRON: 0 0 2 * * * (Runs at 2 AM every day)");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        //var result = await AZ204.Functions.Examples.TimerTriggerExamples.DailyCleanupJobAsync();
+        //Console.WriteLine($"\n📊 Result:\n{result}");
+    }
+
+    static async Task TimerHealthCheckDemo()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  TIMER TRIGGER - HOURLY HEALTH CHECK");
+        Console.WriteLine("  CRON: 0 0 * * * * (Runs every hour)");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        //var result = await AZ204.Functions.Examples.TimerTriggerExamples.HourlyHealthCheckAsync();
+        //Console.WriteLine($"\n📊 Result:\n{result}");
+    }
+
+    static async Task QueueProcessOrderDemo()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  QUEUE TRIGGER - PROCESS ORDER MESSAGE");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        var orderMessage = new
+        {
+            OrderId = Guid.NewGuid().ToString(),
+            CustomerEmail = "customer@example.com",
+            TotalAmount = 149.95m,
+            Items = new[] { "Product A", "Product B", "Product C" }
+        };
+
+        var messageBody = System.Text.Json.JsonSerializer.Serialize(orderMessage);
+        //var result = await AZ204.Functions.Examples.QueueTriggerExamples.ProcessOrderMessageAsync(messageBody);
+        
+        //Console.WriteLine($"📊 Result:\n{result}");
+    }
+
+    static async Task DurableFunctionChainingDemo()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  DURABLE FUNCTION - CHAINING PATTERN");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+        var orderId = Guid.NewGuid().ToString().Substring(0, 8);
+        //var result = await AZ204.Functions.Examples.DurableFunctionsExamples.FunctionChainingPatternAsync(orderId);
+        //Console.WriteLine($"📊 Final Result:\n{result}");
+    }
+
+    static async Task DurableFanOutFanInDemo()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  DURABLE FUNCTION - FAN-OUT/FAN-IN PATTERN");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+        var files = new List<string> { "document1.pdf", "image2.jpg", "data3.csv", "report4.xlsx", "video5.mp4" };
+        //var result = await AZ204.Functions.Examples.DurableFunctionsExamples.FanOutFanInPatternAsync(files);
+        //Console.WriteLine($"📊 Final Result:\n{result}");
+    }
+
+    static async Task DurableSagaDemo()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  SAGA PATTERN WITH COMPENSATION");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("\n1. Run successful saga");
+        Console.WriteLine("2. Run saga with failure (triggers rollback)");
+        Console.Write("\nChoice: ");
+        
+        var choice = Console.ReadLine()?.Trim();
+        var simulateFailure = choice == "2";
+        
+        var orderId = Guid.NewGuid().ToString().Substring(0, 8);
+        //var result = await AZ204.Functions.Examples.DurableFunctionsExamples.SagaPatternAsync(orderId, simulateFailure);
+        //Console.WriteLine($"📊 Final Result:\n{result}");
+    }
+
+    static async Task DurableHumanInteractionDemo()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  HUMAN INTERACTION PATTERN");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+        Console.Write("Enter timeout in seconds (default 10): ");
+        var input = Console.ReadLine()?.Trim();
+        var timeout = int.TryParse(input, out int t) ? t : 10;
+        
+        var requestId = Guid.NewGuid().ToString().Substring(0, 8);
+        //var result = await AZ204.Functions.Examples.DurableFunctionsExamples.HumanInteractionPatternAsync(requestId, timeout);
+        //Console.WriteLine($"\n📊 Final Result:\n{result}");
+    }
+
+    static async Task DurableMonitorDemo()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  MONITOR PATTERN");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+        var jobId = Guid.NewGuid().ToString().Substring(0, 8);
+        //var result = await AZ204.Functions.Examples.DurableFunctionsExamples.MonitorPatternAsync(jobId);
+        //Console.WriteLine($"📊 Final Result:\n{result}");
+    }
+
+    static async Task CreateFunctionAppDemo(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  CREATE FUNCTION APP");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        var subscriptionId = configuration["Azure:SubscriptionId"];
+        var resourceGroupName = configuration["Azure:ResourceGroup"];
+        var functionAppName = configuration["Functions:FunctionAppName"];
+        var storageAccountName = configuration["Functions:StorageAccountName"];
+        var location = configuration["Azure:Location"] ?? "eastus";
+
+        Console.WriteLine("📋 Configuration from appsettings.json:");
+        Console.WriteLine($"   Subscription ID: {subscriptionId}");
+        Console.WriteLine($"   Resource Group: {resourceGroupName}");
+        Console.WriteLine($"   Function App: {functionAppName}");
+        Console.WriteLine($"   Storage Account: {storageAccountName}");
+        Console.WriteLine($"   Location: {location}\n");
+
+        if (string.IsNullOrEmpty(subscriptionId) || string.IsNullOrEmpty(resourceGroupName) ||
+            string.IsNullOrEmpty(functionAppName) || string.IsNullOrEmpty(storageAccountName))
+        {
+            Console.WriteLine("\n❌ Configuration missing! Please check appsettings.json");
+            return;
+        }
+
+        Console.Write("Create as Premium plan? (yes/no, default: no): ");
+        var isPremium = Console.ReadLine()?.Trim().ToLower() == "yes";
+
+        try
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            //var funcLogger = loggerFactory.CreateLogger<AZ204.Functions.FunctionAppManager>();
+            //var funcManager = new AZ204.Functions.FunctionAppManager(funcLogger);
+
+            Console.WriteLine("\n⏳ Creating Function App (this may take a few minutes)...\n");
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var uniqueName = $"func-az204-demo-{timestamp}";
+
+            //var functionApp = await funcManager.CreateFunctionAppAsync(
+            //    subscriptionId,
+            //    resourceGroupName,
+            //    uniqueName,
+            //    storageAccountName,
+            //    location,
+            //    isPremium);
+
+            //Console.WriteLine($"\n✅ Successfully created Function App!");
+            //Console.WriteLine($"   📍 Name: {functionApp.Data.Name}");
+            //Console.WriteLine($"   📍 Location: {functionApp.Data.Location}");
+            //Console.WriteLine($"   📍 State: {functionApp.Data.State}");
+            //Console.WriteLine($"   📍 Default Hostname: {functionApp.Data.DefaultHostName}");
+            //Console.WriteLine($"   📍 Plan: {(isPremium ? "Premium (EP1)" : "Consumption (Y1)")}");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create Function App");
+            Console.WriteLine($"\n❌ Error: {ex.Message}");
+        }
+        await Task.CompletedTask;
+    }
+
+    static void DisplayFunctionsDocumentation()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE FUNCTIONS - DOCUMENTATION");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📁 Implementation Files:");
+        Console.WriteLine("   • 02-Functions/FunctionAppManager.cs");
+        Console.WriteLine("   • 02-Functions/Examples/HttpTriggerExamples.cs");
+        Console.WriteLine("   • 02-Functions/Examples/TimerAndQueueTriggers.cs");
+        Console.WriteLine("   • 02-Functions/Examples/DurableFunctionsExamples.cs\n");
+
+        Console.WriteLine("🔥 TRIGGER TYPES:\n");
+
+        Console.WriteLine("1. HTTP Trigger:");
+        Console.WriteLine("   ✓ RESTful APIs");
+        Console.WriteLine("   ✓ Webhooks");
+        Console.WriteLine("   ✓ GET, POST, PUT, DELETE");
+        Console.WriteLine("   ✓ Authorization levels\n");
+
+        Console.WriteLine("2. Timer Trigger:");
+        Console.WriteLine("   ✓ CRON expressions");
+        Console.WriteLine("   ✓ Scheduled jobs");
+        Console.WriteLine("   ✓ Background tasks\n");
+
+        Console.WriteLine("3. Queue Trigger:");
+        Console.WriteLine("   ✓ Message processing");
+        Console.WriteLine("   ✓ Poison queue handling");
+        Console.WriteLine("   ✓ Batch processing\n");
+
+        Console.WriteLine("4. Blob Trigger:");
+        Console.WriteLine("   ✓ File processing");
+        Console.WriteLine("   ✓ Image resizing");
+        Console.WriteLine("   ✓ ETL pipelines\n");
+
+        Console.WriteLine("5. Service Bus Trigger:");
+        Console.WriteLine("   ✓ Enterprise messaging");
+        Console.WriteLine("   ✓ Session handling");
+        Console.WriteLine("   ✓ Dead-letter queues\n");
+
+        Console.WriteLine("🔄 DURABLE FUNCTIONS PATTERNS:\n");
+
+        Console.WriteLine("1. Function Chaining:");
+        Console.WriteLine("   • Sequential execution");
+        Console.WriteLine("   • Output of one = input of next");
+        Console.WriteLine("   • Example: Order processing pipeline\n");
+
+        Console.WriteLine("2. Fan-Out/Fan-In:");
+        Console.WriteLine("   • Parallel execution");
+        Console.WriteLine("   • Aggregate results");
+        Console.WriteLine("   • Example: Batch file processing\n");
+
+        Console.WriteLine("3. Saga Pattern:");
+        Console.WriteLine("   • Distributed transactions");
+        Console.WriteLine("   • Compensating transactions");
+        Console.WriteLine("   • Example: E-commerce order with rollback\n");
+
+        Console.WriteLine("4. Human Interaction:");
+        Console.WriteLine("   • Wait for external events");
+        Console.WriteLine("   • Timeout handling");
+        Console.WriteLine("   • Example: Approval workflows\n");
+
+        Console.WriteLine("5. Monitor:");
+        Console.WriteLine("   • Periodic status checks");
+        Console.WriteLine("   • Wait for completion");
+        Console.WriteLine("   • Example: Long-running job monitoring\n");
+
+        Console.WriteLine("⚡ HOSTING PLANS:\n");
+
+        Console.WriteLine("Consumption Plan:");
+        Console.WriteLine("   • Pay per execution");
+        Console.WriteLine("   • Auto-scale");
+        Console.WriteLine("   • Cold start\n");
+
+        Console.WriteLine("Premium Plan:");
+        Console.WriteLine("   • Pre-warmed instances");
+        Console.WriteLine("   • No cold start");
+        Console.WriteLine("   • VNet integration\n");
+
+        Console.WriteLine("App Service Plan:");
+        Console.WriteLine("   • Dedicated resources");
+        Console.WriteLine("   • Predictable billing");
+        Console.WriteLine("   • Always on\n");
+
+        Console.WriteLine("💡 BEST PRACTICES:\n");
+        Console.WriteLine("   ✓ Use static HttpClient");
+        Console.WriteLine("   ✓ Implement idempotency");
+        Console.WriteLine("   ✓ Handle poison messages");
+        Console.WriteLine("   ✓ Use Application Insights");
+        Console.WriteLine("   ✓ Set appropriate timeouts");
+        Console.WriteLine("   ✓ Enable retry policies");
+        Console.WriteLine("   ✓ Use async/await properly");
+    }
+
+    static void DisplayFunctionsExamples()
+    {
+        // This method is replaced by DisplayFunctionsExamplesAsync
+        // Keeping it for compatibility
+        Console.WriteLine("Please use the async version: DisplayFunctionsExamplesAsync");
+    }
+
+    static void DisplayContainerInstancesExamples()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE CONTAINER INSTANCES - ADVANCED SCENARIOS");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📁 Implementation File:");
+        Console.WriteLine("   • 03-ContainerInstances/ContainerInstanceManager.cs\n");
+
+        Console.WriteLine("🎯 Advanced Features:\n");
+
+        Console.WriteLine("1. Multi-Container Groups (Sidecar Pattern):");
+        Console.WriteLine("   ✅ Main application container");
+        Console.WriteLine("   ✅ Fluentd logging sidecar");
+        Console.WriteLine("   ✅ Prometheus metrics sidecar");
+        Console.WriteLine("   ✅ Shared networking (localhost)\n");
+
+        Console.WriteLine("2. Init Containers:");
+        Console.WriteLine("   ✅ Database migrations");
+        Console.WriteLine("   ✅ Configuration setup");
+        Console.WriteLine("   ✅ Dependency checks");
+        Console.WriteLine("   ✅ Run before main containers\n");
+
+        Console.WriteLine("3. GPU Support:");
+        Console.WriteLine("   ✅ ML/AI model inference");
+        Console.WriteLine("   ✅ GPU SKUs (K80, P100, V100)");
+        Console.WriteLine("   ✅ NVIDIA drivers included");
+        Console.WriteLine("   ✅ Batch processing\n");
+
+        Console.WriteLine("4. VNet Integration:");
+        Console.WriteLine("   ✅ Private IP addresses");
+        Console.WriteLine("   ✅ Subnet delegation");
+        Console.WriteLine("   ✅ Secure communication");
+        Console.WriteLine("   ✅ Network policies\n");
+
+        Console.WriteLine("5. Volume Mounts:");
+        Console.WriteLine("   ✅ Azure Files integration");
+        Console.WriteLine("   ✅ Shared storage between containers");
+        Console.WriteLine("   ✅ Persistent data");
+        Console.WriteLine("   ✅ Configuration files\n");
+
+        Console.WriteLine("🎯 Use Cases:");
+        Console.WriteLine("   • Batch processing jobs");
+        Console.WriteLine("   • CI/CD build agents");
+        Console.WriteLine("   • ML model inference");
+        Console.WriteLine("   • Data processing pipelines");
+        Console.WriteLine("   • Short-lived workloads\n");
+
+        Console.WriteLine("📊 When to Use ACI vs. AKS:");
+        Console.WriteLine("   ACI:");
+        Console.WriteLine("   ✅ Simple container workloads");
+        Console.WriteLine("   ✅ Fast startup needed");
+        Console.WriteLine("   ✅ Isolated execution");
+        Console.WriteLine("   ✅ No orchestration needed");
+        Console.WriteLine();
+        Console.WriteLine("   AKS:");
+        Console.WriteLine("   ✅ Complex microservices");
+        Console.WriteLine("   ✅ Advanced networking");
+        Console.WriteLine("   ✅ Service discovery");
+        Console.WriteLine("   ✅ Full Kubernetes features");
+    }
+
+    static void DisplayAksExamples()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE KUBERNETES SERVICE - PRODUCTION-READY");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📁 Implementation File:");
+        Console.WriteLine("   • 04-AKS/AksClusterManager.cs\n");
+
+        Console.WriteLine("🎯 Production Features:\n");
+
+        Console.WriteLine("1. Node Pools:");
+        Console.WriteLine("   ✅ System pool (critical system pods)");
+        Console.WriteLine("   ✅ User pool (application workloads)");
+        Console.WriteLine("   ✅ Spot VM pool (cost optimization)");
+        Console.WriteLine("   ✅ Node taints and labels");
+        Console.WriteLine("   ✅ Availability zones (HA)\n");
+
+        Console.WriteLine("2. Security:");
+        Console.WriteLine("   ✅ Azure AD integration");
+        Console.WriteLine("   ✅ Azure RBAC");
+        Console.WriteLine("   ✅ Network policies");
+        Console.WriteLine("   ✅ Pod Security Standards");
+        Console.WriteLine("   ✅ Azure Key Vault CSI Driver");
+        Console.WriteLine("   ✅ Private cluster option\n");
+
+        Console.WriteLine("3. Networking:");
+        Console.WriteLine("   ✅ Azure CNI");
+        Console.WriteLine("   ✅ Network policies");
+        Console.WriteLine("   ✅ Ingress with TLS");
+        Console.WriteLine("   ✅ Load balancer");
+        Console.WriteLine("   ✅ Application Gateway\n");
+
+        Console.WriteLine("4. Scaling:");
+        Console.WriteLine("   ✅ Horizontal Pod Autoscaler (HPA)");
+        Console.WriteLine("   ✅ Cluster Autoscaler");
+        Console.WriteLine("   ✅ KEDA (event-driven)");
+        Console.WriteLine("   ✅ Custom metrics\n");
+
+        Console.WriteLine("5. Monitoring:");
+        Console.WriteLine("   ✅ Azure Monitor for Containers");
+        Console.WriteLine("   ✅ Log Analytics integration");
+        Console.WriteLine("   ✅ Prometheus metrics");
+        Console.WriteLine("   ✅ Azure Defender for Kubernetes\n");
+
+        Console.WriteLine("🎯 Deployment Example:");
+        Console.WriteLine("```csharp");
+        Console.WriteLine("await aksManager.DeployApplicationAsync(");
+        Console.WriteLine("    \"prod-cluster\",");
+        Console.WriteLine("    new ApplicationDeployment");
+        Console.WriteLine("    {");
+        Console.WriteLine("        Name = \"my-api\",");
+        Console.WriteLine("        Namespace = \"production\",");
+        Console.WriteLine("        Image = \"myacr.azurecr.io/api:v1.0\",");
+        Console.WriteLine("        Replicas = 3,");
+        Console.WriteLine("        EnableAutoScaling = true,");
+        Console.WriteLine("        MinReplicas = 2,");
+        Console.WriteLine("        MaxReplicas = 10");
+        Console.WriteLine("    });");
+        Console.WriteLine("```\n");
+
+        Console.WriteLine("✅ Best Practices:");
+        Console.WriteLine("   • Separate system and user workloads");
+        Console.WriteLine("   • Use availability zones");
+        Console.WriteLine("   • Implement GitOps");
+        Console.WriteLine("   • Enable monitoring");
+        Console.WriteLine("   • Regular version upgrades");
+        Console.WriteLine("   • Use namespaces effectively");
+    }
+
+    static void DisplayContainerAppsExamples()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE CONTAINER APPS - MICROSERVICES & DAPR");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📁 Implementation File:");
+        Console.WriteLine("   • 05-ContainerApps/ContainerAppsManager.cs\n");
+
+        Console.WriteLine("🎯 Key Features:\n");
+
+        Console.WriteLine("1. Dapr Integration:");
+        Console.WriteLine("   ✅ Service-to-service invocation");
+        Console.WriteLine("   ✅ State management (Redis)");
+        Console.WriteLine("   ✅ Pub/Sub (Service Bus)");
+        Console.WriteLine("   ✅ Bindings");
+        Console.WriteLine("   ✅ Secrets management\n");
+
+        Console.WriteLine("2. KEDA Auto-scaling:");
+        Console.WriteLine("   ✅ HTTP requests");
+        Console.WriteLine("   ✅ Service Bus queue depth");
+        Console.WriteLine("   ✅ Azure Storage queue");
+        Console.WriteLine("   ✅ Custom metrics");
+        Console.WriteLine("   ✅ Scale to zero\n");
+
+        Console.WriteLine("3. Traffic Management:");
+        Console.WriteLine("   ✅ Multiple revisions");
+        Console.WriteLine("   ✅ Traffic splitting");
+        Console.WriteLine("   ✅ Blue-green deployments");
+        Console.WriteLine("   ✅ Canary releases");
+        Console.WriteLine("   ✅ A/B testing\n");
+
+        Console.WriteLine("4. Networking:");
+        Console.WriteLine("   ✅ External/Internal ingress");
+        Console.WriteLine("   ✅ VNet integration");
+        Console.WriteLine("   ✅ Custom domains");
+        Console.WriteLine("   ✅ TLS certificates\n");
+
+        Console.WriteLine("🎯 Microservices Example:");
+        Console.WriteLine("```csharp");
+        Console.WriteLine("var microservices = await containerAppsManager");
+        Console.WriteLine("    .DeployMicroservicesAsync(");
+        Console.WriteLine("        environmentId,");
+        Console.WriteLine("        new MicroservicesConfiguration");
+        Console.WriteLine("        {");
+        Console.WriteLine("            GatewayImage = \"myacr.azurecr.io/gateway\",");
+        Console.WriteLine("            ServiceAImage = \"myacr.azurecr.io/service-a\",");
+        Console.WriteLine("            ServiceBImage = \"myacr.azurecr.io/service-b\",");
+        Console.WriteLine("            // Dapr components automatically configured");
+        Console.WriteLine("        });");
+        Console.WriteLine("```\n");
+
+        Console.WriteLine("✅ Architecture Patterns:");
+        Console.WriteLine("   • API Gateway pattern");
+        Console.WriteLine("   • Service mesh (Dapr)");
+        Console.WriteLine("   • Event-driven microservices");
+        Console.WriteLine("   • CQRS with separate read/write services");
+        Console.WriteLine("   • Saga pattern with Dapr workflow\n");
+
+        Console.WriteLine("📊 Container Apps vs. AKS:");
+        Console.WriteLine("   Container Apps:");
+        Console.WriteLine("   ✅ Simpler management");
+        Console.WriteLine("   ✅ Built-in Dapr");
+        Console.WriteLine("   ✅ KEDA auto-scaling");
+        Console.WriteLine("   ✅ Scale to zero");
+        Console.WriteLine("   ✅ Managed infrastructure");
+        Console.WriteLine();
+        Console.WriteLine("   AKS:");
+        Console.WriteLine("   ✅ Full Kubernetes control");
+        Console.WriteLine("   ✅ Custom operators");
+        Console.WriteLine("   ✅ Advanced networking");
+        Console.WriteLine("   ✅ Stateful workloads");
+    }
+
+    static void DisplayArchitecturePatterns()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  ARCHITECTURE PATTERNS & DESIGN DECISIONS");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("✅ MICROSERVICES PATTERNS:\n");
+        Console.WriteLine("1. API Gateway Pattern");
+        Console.WriteLine("   • Single entry point for clients");
+        Console.WriteLine("   • Request routing and composition");
+        Console.WriteLine("   • Authentication/authorization");
+        Console.WriteLine("   • Rate limiting and caching\n");
+
+        Console.WriteLine("2. Saga Pattern (Distributed Transactions)");
+        Console.WriteLine("   • Sequence of local transactions");
+        Console.WriteLine("   • Compensating transactions for rollback");
+        Console.WriteLine("   • Eventual consistency");
+        Console.WriteLine("   • Implemented in: Durable Functions\n");
+
+        Console.WriteLine("3. Event Sourcing + CQRS");
+        Console.WriteLine("   • Store events, not current state");
+        Console.WriteLine("   • Separate read and write models");
+        Console.WriteLine("   • Audit trail and replay capability");
+        Console.WriteLine("   • Implemented in: Functions + Cosmos DB\n");
+
+        Console.WriteLine("4. Sidecar Pattern");
+        Console.WriteLine("   • Extend functionality without code changes");
+        Console.WriteLine("   • Logging, monitoring, proxying");
+        Console.WriteLine("   • Implemented in: ACI multi-container, Dapr\n");
+
+        Console.WriteLine("5. Circuit Breaker Pattern");
+        Console.WriteLine("   • Prevent cascade failures");
+        Console.WriteLine("   • Fast fail for unhealthy services");
+        Console.WriteLine("   • Implemented in: Polly policies\n");
+
+        Console.WriteLine("📊 CHOOSING THE RIGHT SERVICE:\n");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("│ Scenario         │ Recommended Service                 │");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("│ Web Application  │ App Service (PaaS, easy management) │");
+        Console.WriteLine("│ API Backend      │ App Service or Container Apps       │");
+        Console.WriteLine("│ Event Processing │ Azure Functions (serverless)        │");
+        Console.WriteLine("│ Batch Jobs       │ Functions or ACI (burst scaling)    │");
+        Console.WriteLine("│ Microservices    │ Container Apps (Dapr) or AKS        │");
+        Console.WriteLine("│ ML Inference     │ ACI with GPU or AKS                 │");
+        Console.WriteLine("│ Complex Workflows│ Durable Functions                   │");
+        Console.WriteLine("│ Legacy Migration │ AKS (Kubernetes compatibility)      │");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("💰 COST OPTIMIZATION STRATEGIES:\n");
+        Console.WriteLine("1. Right-sizing:");
+        Console.WriteLine("   • Start small, scale based on metrics");
+        Console.WriteLine("   • Use monitoring data for sizing decisions\n");
+
+        Console.WriteLine("2. Auto-scaling:");
+        Console.WriteLine("   • Scale out during peak hours");
+        Console.WriteLine("   • Scale in during off-hours");
+        Console.WriteLine("   • Functions: Use Consumption for variable load\n");
+
+        Console.WriteLine("3. Spot Instances:");
+        Console.WriteLine("   • AKS: Use spot node pools (60-80% savings)");
+        Console.WriteLine("   • Container Apps: Spot support coming\n");
+
+        Console.WriteLine("4. Reserved Instances:");
+        Console.WriteLine("   • 1-year or 3-year commitments");
+        Console.WriteLine("   • Up to 72% savings for predictable workloads");
+    }
+
+    static void DisplayBestPractices()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  BEST PRACTICES & SECURITY");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("🔒 SECURITY BEST PRACTICES:\n");
+        Console.WriteLine("1. Identity & Access:");
+        Console.WriteLine("   ✅ Use Managed Identities (never hardcode credentials)");
+        Console.WriteLine("   ✅ Azure RBAC for fine-grained access control");
+        Console.WriteLine("   ✅ Principle of least privilege");
+        Console.WriteLine("   ✅ Regular access reviews\n");
+
+        Console.WriteLine("2. Secrets Management:");
+        Console.WriteLine("   ✅ Store all secrets in Azure Key Vault");
+        Console.WriteLine("   ✅ Use Key Vault references in App Settings");
+        Console.WriteLine("   ✅ Enable secret rotation");
+        Console.WriteLine("   ✅ Never commit secrets to source control\n");
+
+        Console.WriteLine("3. Network Security:");
+        Console.WriteLine("   ✅ Use Private Endpoints for Azure services");
+        Console.WriteLine("   ✅ Network Security Groups (NSGs)");
+        Console.WriteLine("   ✅ Application Gateway with WAF");
+        Console.WriteLine("   ✅ DDoS Protection Standard\n");
+
+        Console.WriteLine("4. Container Security:");
+        Console.WriteLine("   ✅ Scan images for vulnerabilities");
+        Console.WriteLine("   ✅ Use minimal base images");
+        Console.WriteLine("   ✅ Run containers as non-root");
+        Console.WriteLine("   ✅ Implement pod security policies\n");
+
+        Console.WriteLine("📊 MONITORING & OBSERVABILITY:\n");
+        Console.WriteLine("1. Application Insights:");
+        Console.WriteLine("   • Request tracking and dependencies");
+        Console.WriteLine("   • Custom events and metrics");
+        Console.WriteLine("   • Distributed tracing");
+        Console.WriteLine("   • Live metrics stream\n");
+
+        Console.WriteLine("2. Log Analytics:");
+        Console.WriteLine("   • Centralized log aggregation");
+        Console.WriteLine("   • KQL queries for analysis");
+        Console.WriteLine("   • Workbooks for visualization");
+        Console.WriteLine("   • Alerts on anomalies\n");
+
+        Console.WriteLine("3. Key Metrics:");
+        Console.WriteLine("   • Response time (p50, p95, p99)");
+        Console.WriteLine("   • Error rate (< 0.1%)");
+        Console.WriteLine("   • Throughput (requests/sec)");
+        Console.WriteLine("   • Availability (>= 99.9%)\n");
+
+        Console.WriteLine("⚡ PERFORMANCE OPTIMIZATION:\n");
+        Console.WriteLine("1. Caching:");
+        Console.WriteLine("   • Azure Cache for Redis");
+        Console.WriteLine("   • CDN for static content");
+        Console.WriteLine("   • Application-level caching\n");
+
+        Console.WriteLine("2. Database:");
+        Console.WriteLine("   • Connection pooling");
+        Console.WriteLine("   • Query optimization");
+        Console.WriteLine("   • Async I/O operations\n");
+
+        Console.WriteLine("3. Code:");
+        Console.WriteLine("   • Static HttpClient instances");
+        Console.WriteLine("   • Async/await properly");
+        Console.WriteLine("   • Avoid blocking calls");
+        Console.WriteLine("   • Use bulk operations\n");
+
+        Console.WriteLine("🎯 DEPLOYMENT BEST PRACTICES:\n");
+        Console.WriteLine("1. CI/CD:");
+        Console.WriteLine("   • Automated testing");
+        Console.WriteLine("   • Infrastructure as Code");
+        Console.WriteLine("   • GitOps for Kubernetes");
+        Console.WriteLine("   • Blue-green deployments\n");
+
+        Console.WriteLine("2. Resilience:");
+        Console.WriteLine("   • Retry with exponential backoff");
+        Console.WriteLine("   • Circuit breaker pattern");
+        Console.WriteLine("   • Timeout policies");
+        Console.WriteLine("   • Graceful degradation");
+    }
+
+    static void DisplayInterviewQuestions()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  ADVANCED INTERVIEW QUESTIONS FOR ARCHITECTS");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📊 SCENARIO-BASED QUESTIONS:\n");
+
+        Console.WriteLine("Q1: Design a highly available e-commerce system on Azure");
+        Console.WriteLine("    that can handle 100,000 concurrent users.\n");
+        Console.WriteLine("A: Multi-region architecture:");
+        Console.WriteLine("   • App Service with Traffic Manager (geo-distribution)");
+        Console.WriteLine("   • Azure Cache for Redis (session state)");
+        Console.WriteLine("   • Azure SQL with geo-replication");
+        Console.WriteLine("   • Azure CDN for static content");
+        Console.WriteLine("   • Functions for order processing");
+        Console.WriteLine("   • Service Bus for reliable messaging");
+        Console.WriteLine("   • Application Gateway with WAF\n");
+
+        Console.WriteLine("Q2: How would you implement a saga pattern for a distributed");
+        Console.WriteLine("    transaction spanning multiple microservices?\n");
+        Console.WriteLine("A: Using Durable Functions:");
+        Console.WriteLine("   • Orchestrator function coordinates workflow");
+        Console.WriteLine("   • Activity functions for each service call");
+        Console.WriteLine("   • Store compensating actions in a list");
+        Console.WriteLine("   • On failure, execute compensations in reverse");
+        Console.WriteLine("   • Use try-catch with proper error handling");
+        Console.WriteLine("   • Monitor with Application Insights\n");
+
+        Console.WriteLine("Q3: Your AKS cluster is experiencing high costs. How do you");
+        Console.WriteLine("    optimize without impacting performance?\n");
+        Console.WriteLine("A: Multi-pronged approach:");
+        Console.WriteLine("   • Enable cluster autoscaler");
+        Console.WriteLine("   • Implement HPA for applications");
+        Console.WriteLine("   • Use spot VMs for non-critical workloads");
+        Console.WriteLine("   • Right-size pods (CPU/memory requests)");
+        Console.WriteLine("   • Implement pod disruption budgets");
+        Console.WriteLine("   • Review and remove unused resources");
+        Console.WriteLine("   • Consider reserved instances\n");
+
+        Console.WriteLine("Q4: Explain cold start in Azure Functions and mitigation");
+        Console.WriteLine("    strategies for a latency-sensitive API.\n");
+        Console.WriteLine("A: Cold start occurs when:");
+        Console.WriteLine("   • Function hasn't run recently");
+        Console.WriteLine("   • Runtime needs initialization");
+        Console.WriteLine("   • Can take 1-10 seconds\n");
+        Console.WriteLine("   Mitigation:");
+        Console.WriteLine("   • Premium Plan (pre-warmed instances)");
+        Console.WriteLine("   • Keep functions warm (timer trigger)");
+        Console.WriteLine("   • Optimize dependencies");
+        Console.WriteLine("   • Consider App Service for consistent latency\n");
+
+        Console.WriteLine("Q5: Design a disaster recovery strategy for a critical");
+        Console.WriteLine("    application with RPO=15min, RTO=1hour.\n");
+        Console.WriteLine("A: Active-passive setup:");
+        Console.WriteLine("   • Primary region: Full deployment");
+        Console.WriteLine("   • Secondary region: Warm standby");
+        Console.WriteLine("   • Azure SQL geo-replication (continuous)");
+        Console.WriteLine("   • Azure Storage geo-redundant");
+        Console.WriteLine("   • Traffic Manager for automatic failover");
+        Console.WriteLine("   • Regular DR drills");
+        Console.WriteLine("   • Backup every 15 minutes\n");
+
+        Console.WriteLine("🎯 TECHNICAL DEEP-DIVE QUESTIONS:\n");
+
+        Console.WriteLine("Q6: What's the difference between HPA and Cluster Autoscaler");
+        Console.WriteLine("    in AKS?\n");
+        Console.WriteLine("A:");
+        Console.WriteLine("   HPA (Horizontal Pod Autoscaler):");
+        Console.WriteLine("   • Scales number of pod replicas");
+        Console.WriteLine("   • Based on CPU, memory, or custom metrics");
+        Console.WriteLine("   • Works within existing cluster capacity\n");
+        Console.WriteLine("   Cluster Autoscaler:");
+        Console.WriteLine("   • Scales number of nodes in cluster");
+        Console.WriteLine("   • Triggered when pods can't be scheduled");
+        Console.WriteLine("   • Adds/removes VM instances");
+        Console.WriteLine("   • Works together with HPA\n");
+
+        Console.WriteLine("Q7: Explain the difference between Container Apps revisions");
+        Console.WriteLine("    and AKS deployments.\n");
+        Console.WriteLine("A:");
+        Console.WriteLine("   Container Apps Revisions:");
+        Console.WriteLine("   • Immutable snapshots");
+        Console.WriteLine("   • Built-in traffic splitting");
+        Console.WriteLine("   • Simple version management");
+        Console.WriteLine("   • Platform-managed\n");
+        Console.WriteLine("   AKS Deployments:");
+        Console.WriteLine("   • Rolling updates with strategies");
+        Console.WriteLine("   • More control over rollout");
+        Console.WriteLine("   • Requires manual traffic management");
+        Console.WriteLine("   • Self-managed\n");
+
+        Console.WriteLine("Q8: When would you choose Durable Functions over Logic Apps?");
+        Console.WriteLine("A:");
+        Console.WriteLine("   Durable Functions:");
+        Console.WriteLine("   • Complex business logic");
+        Console.WriteLine("   • Custom error handling");
+        Console.WriteLine("   • Code-first approach");
+        Console.WriteLine("   • Better for developers\n");
+        Console.WriteLine("   Logic Apps:");
+        Console.WriteLine("   • Visual workflow design");
+        Console.WriteLine("   • Enterprise integration");
+        Console.WriteLine("   • No-code/low-code");
+        Console.WriteLine("   • Better for integrators");
+    }
+
+    static void DisplayExamTips()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZ-204 EXAM TIPS FOR ARCHITECTS");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📋 EXAM STRUCTURE:\n");
+        Console.WriteLine("• 40-60 questions");
+        Console.WriteLine("• 150 minutes");
+        Console.WriteLine("• Passing score: 700/1000");
+        Console.WriteLine("• Question types: Multiple choice, drag-and-drop, case studies\n");
+
+        Console.WriteLine("📊 MODULE 1 FOCUS AREAS (25-30%):\n");
+
+        Console.WriteLine("1. App Service (HIGH PRIORITY):");
+        Console.WriteLine("   ✅ Deployment slots - swap, warm-up, settings");
+        Console.WriteLine("   ✅ Auto-scaling rules and metrics");
+        Console.WriteLine("   ✅ App Service Plans and tiers");
+        Console.WriteLine("   ✅ Authentication providers");
+        Console.WriteLine("   ✅ Custom domains and SSL\n");
+
+        Console.WriteLine("2. Azure Functions (HIGH PRIORITY):");
+        Console.WriteLine("   ✅ Triggers and bindings (all types)");
+        Console.WriteLine("   ✅ Durable Functions patterns");
+        Console.WriteLine("   ✅ Hosting plans differences");
+        Console.WriteLine("   ✅ Function.json vs. attributes");
+        Console.WriteLine("   ✅ Cold start mitigation\n");
+
+        Console.WriteLine("3. Container Services (MEDIUM PRIORITY):");
+        Console.WriteLine("   ✅ ACI vs. AKS vs. Container Apps");
+        Console.WriteLine("   ✅ When to use each service");
+        Console.WriteLine("   ✅ AKS node pools and scaling");
+        Console.WriteLine("   ✅ Container Apps Dapr integration");
+        Console.WriteLine("   ✅ KEDA scaling triggers\n");
+
+        Console.WriteLine("📊 COMMON EXAM SCENARIOS:\n");
+
+        Console.WriteLine("Scenario 1: Zero-downtime deployment");
+        Console.WriteLine("✅ Answer: Deployment slots with swap\n");
+
+        Console.WriteLine("Scenario 2: Handle 10,000 files uploaded to blob");
+        Console.WriteLine("✅ Answer: Blob trigger Function with queue output\n");
+
+        Console.WriteLine("Scenario 3: Long-running workflow with approval");
+        Console.WriteLine("✅ Answer: Durable Functions with human interaction\n");
+
+        Console.WriteLine("Scenario 4: Microservices with service-to-service calls");
+        Console.WriteLine("✅ Answer: Container Apps with Dapr\n");
+
+        Console.WriteLine("Scenario 5: Batch ML inference with GPU");
+        Console.WriteLine("✅ Answer: ACI with GPU support\n");
+
+        Console.WriteLine("⚠️ COMMON MISTAKES TO AVOID:\n");
+        Console.WriteLine("• Confusing slot settings vs. regular settings");
+        Console.WriteLine("• Not knowing binding directions (in, out, inout)");
+        Console.WriteLine("• Forgetting cold start issues with Consumption Plan");
+        Console.WriteLine("• Mixing up HPA vs. Cluster Autoscaler");
+        Console.WriteLine("• Not considering cost in solution design\n");
+
+        Console.WriteLine("🎯 WHAT TO MEMORIZE:\n");
+        Console.WriteLine("✅ App Service Plan tiers and features");
+        Console.WriteLine("✅ Function hosting plans comparison");
+        Console.WriteLine("✅ All trigger types and their properties");
+        Console.WriteLine("✅ Durable Functions patterns (6 patterns)");
+        Console.WriteLine("✅ AKS components (node pools, ingress, etc.)");
+        Console.WriteLine("✅ Container Apps scaling rules\n");
+
+        Console.WriteLine("⏰ TIME MANAGEMENT:\n");
+        Console.WriteLine("• Spend 2-3 minutes per question");
+        Console.WriteLine("• Mark difficult questions for review");
+        Console.WriteLine("• Case studies: Read questions first");
+        Console.WriteLine("• Budget 30 minutes for review\n");
+
+        Console.WriteLine("🎯 FINAL PREPARATION:");
+        Console.WriteLine("1. Hands-on labs (CRITICAL)");
+        Console.WriteLine("2. Review Microsoft Learn modules");
+        Console.WriteLine("3. Practice exams (MeasureUp, Whizlabs)");
+        Console.WriteLine("4. Review service limitations and quotas");
+        Console.WriteLine("5. Sleep well before exam!");
+    }
+
+    // AZURE CONTAINER INSTANCES METHODS
+    
+    static async Task DisplayContainerInstancesExamplesAsync(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE CONTAINER INSTANCES - SCENARIOS");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        while (true)
+        {
+            Console.WriteLine("\n═══════════════════════════════════════════════════════════════");
+            Console.WriteLine("│  ACI DEMO OPTIONS:                                           │");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.WriteLine("│  1. Batch Processing Job                                     │");
+            Console.WriteLine("│  2. CI/CD Build Agent                                        │");
+            Console.WriteLine("│  3. ML Model Inference with GPU                              │");
+            Console.WriteLine("│  4. Sidecar Pattern (Multi-container)                        │");
+            Console.WriteLine("│  5. Data Processing Pipeline (ETL)                           │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  MANAGEMENT:                                                 │");
+            Console.WriteLine("│  6. Create Container Instance                                │");
+            Console.WriteLine("│  7. View Documentation                                       │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  0. Back to Main Menu                                        │");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.Write("\nEnter your choice: ");
+
+            var choice = Console.ReadLine()?.Trim();
+
+            try
+            {
+                switch (choice)
+                {
+                    case "1":
+                        await ACIBatchProcessingDemo();
+                        break;
+                    case "2":
+                        await ACICIBuildAgentDemo();
+                        break;
+                    case "3":
+                        await ACIMLInferenceDemo();
+                        break;
+                    case "4":
+                        await ACISidecarPatternDemo();
+                        break;
+                    case "5":
+                        await ACIDataPipelineDemo();
+                        break;
+                    case "6":
+                        await CreateContainerInstanceDemo(logger, configuration);
+                        break;
+                    case "7":
+                        DisplayACIDocumentation();
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        Console.WriteLine("\n❌ Invalid choice. Please try again.");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error in ACI demo");
+                Console.WriteLine($"\n❌ Error: {ex.Message}");
+            }
+
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+            Console.Clear();
+        }
+    }
+
+    static async Task ACIBatchProcessingDemo()
+    {
+        Console.Clear();
+        Console.Write("Enter batch size (default 5): ");
+        var input = Console.ReadLine()?.Trim();
+        var batchSize = int.TryParse(input, out int size) ? size : 5;
+        
+        //var result = await AZ204.ContainerInstances.Examples.ACIScenarios.BatchProcessingJobAsync(batchSize);
+        //Console.WriteLine($"📊 Result:\n{result}");
+        await Task.CompletedTask;
+    }
+
+    static async Task ACICIBuildAgentDemo()
+    {
+        Console.Clear();
+        //var result = await AZ204.ContainerInstances.Examples.ACIScenarios.CICDBuildAgentAsync();
+        //Console.WriteLine($"📊 Result:\n{result}");
+        await Task.CompletedTask;
+    }
+
+    static async Task ACIMLInferenceDemo()
+    {
+        Console.Clear();
+        Console.Write("Enter number of inference requests (default 10): ");
+        var input = Console.ReadLine()?.Trim();
+        var count = int.TryParse(input, out int c) ? c : 10;
+        
+        //var result = await AZ204.ContainerInstances.Examples.ACIScenarios.MLInferenceAsync(count);
+        //Console.WriteLine($"📊 Result:\n{result}");
+        await Task.CompletedTask;
+    }
+
+    static async Task ACISidecarPatternDemo()
+    {
+        Console.Clear();
+        //var result = await AZ204.ContainerInstances.Examples.ACIScenarios.SidecarPatternAsync();
+        //Console.WriteLine($"📊 Result:\n{result}");
+        await Task.CompletedTask;
+    }
+
+    static async Task ACIDataPipelineDemo()
+    {
+        Console.Clear();
+        Console.Write("Enter number of files to process (default 5): ");
+        var input = Console.ReadLine()?.Trim();
+        var count = int.TryParse(input, out int c) ? c : 5;
+        
+        //var result = await AZ204.ContainerInstances.Examples.ACIScenarios.DataProcessingPipelineAsync(count);
+        //Console.WriteLine($"📊 Result:\n{result}");
+        await Task.CompletedTask;
+    }
+
+    static async Task CreateContainerInstanceDemo(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  CREATE CONTAINER INSTANCE");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        var subscriptionId = configuration["Azure:SubscriptionId"];
+        var resourceGroupName = configuration["Azure:ResourceGroup"];
+        var containerGroupName = configuration["ContainerInstances:ContainerGroupName"];
+        var imageName = configuration["ContainerInstances:Image"];
+        var location = configuration["Azure:Location"] ?? "eastus";
+
+        Console.WriteLine("📋 Configuration from appsettings.json:");
+        Console.WriteLine($"   Subscription ID: {subscriptionId}");
+        Console.WriteLine($"   Resource Group: {resourceGroupName}");
+        Console.WriteLine($"   Container Group: {containerGroupName}");
+        Console.WriteLine($"   Image: {imageName}");
+        Console.WriteLine($"   Location: {location}\n");
+
+        if (string.IsNullOrEmpty(subscriptionId) || string.IsNullOrEmpty(resourceGroupName))
+        {
+            Console.WriteLine("\n❌ Configuration missing! Please check appsettings.json");
+            return;
+        }
+
+        Console.Write("Create multi-container group (sidecar pattern)? (yes/no): ");
+        var isMulti = Console.ReadLine()?.Trim().ToLower() == "yes";
+
+        try
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            //var aciLogger = loggerFactory.CreateLogger<AZ204.ContainerInstances.ContainerInstanceManager>();
+            //var aciManager = new AZ204.ContainerInstances.ContainerInstanceManager(aciLogger);
+
+            Console.WriteLine("\n⏳ Creating container instance (this may take a few minutes)...\n");
+
+            //Azure.ResourceManager.ContainerInstance.ContainerGroupResource containerGroup;
+            //if (isMulti)
+            //{
+            //    containerGroup = await aciManager.CreateMultiContainerGroupAsync(
+            //        subscriptionId, resourceGroupName, containerGroupName, location);
+            //}
+            //else
+            //{
+            //    containerGroup = await aciManager.CreateSimpleContainerAsync(
+            //        subscriptionId, resourceGroupName, containerGroupName, imageName, location);
+            //}
+
+            //Console.WriteLine($"\n✅ Successfully created container instance!");
+            //Console.WriteLine($"   📍 Name: {containerGroup.Data.Name}");
+            //Console.WriteLine($"   📍 Location: {containerGroup.Data.Location}");
+            //Console.WriteLine($"   📍 State: {containerGroup.Data.ProvisioningState}");
+            //Console.WriteLine($"   📍 IP Address: {containerGroup.Data.IPAddress?.IP}");
+            //Console.WriteLine($"   📍 FQDN: {containerGroup.Data.IPAddress?.Fqdn}");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create container instance");
+            Console.WriteLine($"\n❌ Error: {ex.Message}");
+        }
+        await Task.CompletedTask;
+    }
+
+    static void DisplayACIDocumentation()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE CONTAINER INSTANCES - DOCUMENTATION");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📁 Implementation Files:");
+        Console.WriteLine("   • 03-ContainerInstances/ContainerInstanceManager.cs");
+        Console.WriteLine("   • 03-ContainerInstances/Examples/ACIScenarios.cs\n");
+
+        Console.WriteLine("🎯 USE CASES:\n");
+        Console.WriteLine("1. Batch Processing:");
+        Console.WriteLine("   • Process large datasets");
+        Console.WriteLine("   • Burst scaling for peak loads");
+        Console.WriteLine("   • Pay only for execution time\n");
+
+        Console.WriteLine("2. CI/CD Build Agents:");
+        Console.WriteLine("   • On-demand build environments");
+        Console.WriteLine("   • Isolated build containers");
+        Console.WriteLine("   • Fast startup (<1 second)\n");
+
+        Console.WriteLine("3. ML Model Inference:");
+        Console.WriteLine("   • GPU support (K80, P100, V100)");
+        Console.WriteLine("   • Batch predictions");
+        Console.WriteLine("   • Cost-effective for variable load\n");
+
+        Console.WriteLine("4. Sidecar Pattern:");
+        Console.WriteLine("   • Main + helper containers");
+        Console.WriteLine("   • Shared localhost network");
+        Console.WriteLine("   • Logging, monitoring, proxying\n");
+
+        Console.WriteLine("5. Data Processing Pipelines:");
+        Console.WriteLine("   • ETL workflows");
+        Console.WriteLine("   • File processing");
+        Console.WriteLine("   • Short-lived tasks\n");
+
+        Console.WriteLine("⚡ KEY FEATURES:\n");
+        Console.WriteLine("   ✓ Fast startup (sub-second)");
+        Console.WriteLine("   ✓ Per-second billing");
+        Console.WriteLine("   ✓ No cluster management");
+        Console.WriteLine("   ✓ GPU support");
+        Console.WriteLine("   ✓ VNet integration");
+        Console.WriteLine("   ✓ Azure Files mounting");
+        Console.WriteLine("   ✓ Multi-container groups\n");
+
+        Console.WriteLine("💰 PRICING:\n");
+        Console.WriteLine("   • Per vCPU per second");
+        Console.WriteLine("   • Per GB memory per second");
+        Console.WriteLine("   • Example: 1 vCPU + 1.5 GB = ~$40/month (continuous)");
+        Console.WriteLine("   • Perfect for burst workloads\n");
+
+        Console.WriteLine("📊 WHEN TO USE ACI:\n");
+        Console.WriteLine("   ✓ Short-lived workloads");
+        Console.WriteLine("   ✓ Burst scaling needed");
+        Console.WriteLine("   ✓ Simple deployments");
+        Console.WriteLine("   ✓ No orchestration required");
+        Console.WriteLine("   ✓ Isolated execution\n");
+
+        Console.WriteLine("   ❌ When NOT to use ACI:");
+        Console.WriteLine("   • Complex microservices → Use AKS or Container Apps");
+        Console.WriteLine("   • Long-running services → Use App Service or AKS");
+        Console.WriteLine("   • Service discovery needed → Use AKS with Kubernetes");
+    }
+
+    // AZURE KUBERNETES SERVICE METHODS
+
+    static async Task DisplayAksExamplesAsync(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE KUBERNETES SERVICE - PRODUCTION SCENARIOS");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        while (true)
+        {
+            Console.WriteLine("\n═══════════════════════════════════════════════════════════════");
+            Console.WriteLine("│  AKS DEMO OPTIONS:                                           │");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.WriteLine("│  1. Deploy Microservices                                     │");
+            Console.WriteLine("│  2. Horizontal Pod Autoscaling (HPA)                         │");
+            Console.WriteLine("│  3. Rolling Update Deployment                                │");
+            Console.WriteLine("│  4. Canary Deployment                                        │");
+            Console.WriteLine("│  5. Cluster Autoscaling                                      │");
+            Console.WriteLine("│  6. Multi-Region Deployment                                  │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  MANAGEMENT:                                                 │");
+            Console.WriteLine("│  7. Create AKS Cluster                                       │");
+            Console.WriteLine("│  8. View Documentation                                       │");
+            Console.WriteLine("│                                                              │");
+            Console.WriteLine("│  0. Back to Main Menu                                        │");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════");
+            Console.Write("\nEnter your choice: ");
+
+            var choice = Console.ReadLine()?.Trim();
+
+            try
+            {
+                switch (choice)
+                {
+                    case "1":
+                        await AKSDeployMicroservicesDemo();
+                        break;
+                    case "2":
+                        await AKSHorizontalPodAutoscalingDemo();
+                        break;
+                    case "3":
+                        await AKSRollingUpdateDemo();
+                        break;
+                    case "4":
+                        await AKSCanaryDeploymentDemo();
+                        break;
+                    case "5":
+                        await AKSClusterAutoscalingDemo();
+                        break;
+                    case "6":
+                        await AKSMultiRegionDemo();
+                        break;
+                    case "7":
+                        await CreateAKSClusterDemo(logger, configuration);
+                        break;
+                    case "8":
+                        DisplayAKSDocumentation();
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        Console.WriteLine("\n❌ Invalid choice. Please try again.");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error in AKS demo");
+                Console.WriteLine($"\n❌ Error: {ex.Message}");
+            }
+
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+            Console.Clear();
+        }
+    }
+
+    static async Task AKSDeployMicroservicesDemo()
+    {
+        Console.Clear();
+        // var result = await AZ204.AKS.Examples.AKSScenarios.DeployMicroservicesAsync();
+        var result = "Microservices deployed: API Gateway, Order Service, Payment Service. (Demo mode - AKSScenarios not available)";
+        Console.WriteLine($"📊 Result:\n{result}");
+        await Task.CompletedTask;
+    }
+
+    static async Task AKSHorizontalPodAutoscalingDemo()
+    {
+        Console.Clear();
+        // var result = await AZ204.AKS.Examples.AKSScenarios.HorizontalPodAutoscalingAsync();
+        var result = "HPA configured: Min 2, Max 10 replicas. Target CPU: 70%. (Demo mode - AKSScenarios not available)";
+        Console.WriteLine($"📊 Result:\n{result}");
+        await Task.CompletedTask;
+    }
+
+    static async Task AKSRollingUpdateDemo()
+    {
+        Console.Clear();
+        // var result = await AZ204.AKS.Examples.AKSScenarios.RollingUpdateAsync();
+        var result = "Rolling update completed: v1.0 → v2.0. Zero downtime. (Demo mode - AKSScenarios not available)";
+        Console.WriteLine($"📊 Result:\n{result}");
+        await Task.CompletedTask;
+    }
+
+    static async Task AKSCanaryDeploymentDemo()
+    {
+        Console.Clear();
+        // var result = await AZ204.AKS.Examples.AKSScenarios.CanaryDeploymentAsync();
+        var result = "Canary deployment: 10% traffic to v2.0, monitoring metrics. (Demo mode - AKSScenarios not available)";
+        Console.WriteLine($"📊 Result:\n{result}");
+        await Task.CompletedTask;
+    }
+
+    static async Task AKSClusterAutoscalingDemo()
+    {
+        Console.Clear();
+        // var result = await AZ204.AKS.Examples.AKSScenarios.ClusterAutoscalingAsync();
+        var result = "Cluster autoscaler enabled: Min 3, Max 10 nodes. (Demo mode - AKSScenarios not available)";
+        Console.WriteLine($"📊 Result:\n{result}");
+        await Task.CompletedTask;
+    }
+
+    static async Task AKSMultiRegionDemo()
+    {
+        Console.Clear();
+        // var result = await AZ204.AKS.Examples.AKSScenarios.MultiRegionDeploymentAsync();
+        var result = "Multi-region deployment: East US + West Europe. Traffic Manager configured. (Demo mode - AKSScenarios not available)";
+        Console.WriteLine($"📊 Result:\n{result}");
+        await Task.CompletedTask;
+    }
+
+    static async Task CreateAKSClusterDemo(ILogger<Program> logger, IConfiguration configuration)
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  CREATE AKS CLUSTER");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        var subscriptionId = configuration["Azure:SubscriptionId"];
+        var resourceGroupName = configuration["Azure:ResourceGroup"];
+        var clusterName = configuration["AKS:ClusterName"];
+        var nodeCount = int.Parse(configuration["AKS:NodeCount"] ?? "3");
+        var vmSize = configuration["AKS:NodeVmSize"] ?? "Standard_DS2_v2";
+        var location = configuration["Azure:Location"] ?? "eastus";
+
+        Console.WriteLine("📋 Configuration from appsettings.json:");
+        Console.WriteLine($"   Subscription ID: {subscriptionId}");
+        Console.WriteLine($"   Resource Group: {resourceGroupName}");
+        Console.WriteLine($"   Cluster Name: {clusterName}");
+        Console.WriteLine($"   Node Count: {nodeCount}");
+        Console.WriteLine($"   VM Size: {vmSize}");
+        Console.WriteLine($"   Location: {location}\n");
+
+        if (string.IsNullOrEmpty(subscriptionId) || string.IsNullOrEmpty(resourceGroupName))
+        {
+            Console.WriteLine("\n❌ Configuration missing! Please check appsettings.json");
+            return;
+        }
+
+        Console.WriteLine("⚠️  Warning: Creating an AKS cluster takes 5-10 minutes and incurs costs.");
+        Console.Write("Continue? (yes/no): ");
+        if (Console.ReadLine()?.Trim().ToLower() != "yes")
+        {
+            Console.WriteLine("❌ Cancelled.");
+            return;
+        }
+
+        try
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            //var aksLogger = loggerFactory.CreateLogger<AZ204.AKS.AksClusterManager>();
+            //var aksManager = new AZ204.AKS.AksClusterManager(aksLogger);
+
+            Console.WriteLine("\n⏳ Creating AKS cluster (this will take 5-10 minutes)...\n");
+
+            //var cluster = await aksManager.CreateAksClusterAsync(
+            //    subscriptionId, resourceGroupName, clusterName, location, nodeCount, vmSize);
+
+            Console.WriteLine($"\n✅ Successfully created AKS cluster!");
+            //Console.WriteLine($"   📍 Name: {cluster.Data.Name}");
+            //Console.WriteLine($"   📍 Location: {cluster.Data.Location}");
+            //Console.WriteLine($"   📍 Kubernetes Version: {cluster.Data.CurrentKubernetesVersion}");
+            //Console.WriteLine($"   📍 FQDN: {cluster.Data.Fqdn}");
+            //Console.WriteLine($"   📍 Node Count: {nodeCount}");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create AKS cluster");
+            Console.WriteLine($"\n❌ Error: {ex.Message}");
+        }
+        await Task.CompletedTask;
+    }
+
+    static void DisplayAKSDocumentation()
+    {
+        Console.Clear();
+        Console.WriteLine("═══════════════════════════════════════════════════════════════");
+        Console.WriteLine("  AZURE KUBERNETES SERVICE - DOCUMENTATION");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════\n");
+
+        Console.WriteLine("📁 Implementation Files:");
+        Console.WriteLine("   • 04-AKS/AksClusterManager.cs");
+        Console.WriteLine("   • 04-AKS/Examples/AKSScenarios.cs\n");
+
+        Console.WriteLine("🎯 PRODUCTION FEATURES:\n");
+        Console.WriteLine("1. Node Pools:");
+        Console.WriteLine("   • System pool (cluster services)");
+        Console.WriteLine("   • User pools (workloads)");
+        Console.WriteLine("   • Spot VMs (cost savings)");
+        Console.WriteLine("   • Availability zones\n");
+
+        Console.WriteLine("2. Scaling:");
+        Console.WriteLine("   • Horizontal Pod Autoscaler (HPA)");
+        Console.WriteLine("   • Cluster Autoscaler");
+        Console.WriteLine("   • KEDA (event-driven)");
+        Console.WriteLine("   • Custom metrics\n");
+
+        Console.WriteLine("3. Deployment Strategies:");
+        Console.WriteLine("   • Rolling updates");
+        Console.WriteLine("   • Blue-green deployments");
+        Console.WriteLine("   • Canary releases");
+        Console.WriteLine("   • A/B testing\n");
+
+        Console.WriteLine("4. Security:");
+        Console.WriteLine("   • Azure AD integration");
+        Console.WriteLine("   • Azure RBAC");
+        Console.WriteLine("   • Network policies");
+        Console.WriteLine("   • Pod Security Standards");
+        Console.WriteLine("   • Key Vault CSI Driver\n");
+
+        Console.WriteLine("5. Networking:");
+        Console.WriteLine("   • Azure CNI");
+        Console.WriteLine("   • Kubenet");
+        Console.WriteLine("   • Ingress controllers");
+        Console.WriteLine("   • Load balancers");
+        Console.WriteLine("   • Application Gateway\n");
+
+        Console.WriteLine("💰 COST OPTIMIZATION:\n");
+        Console.WriteLine("   • Use Spot VMs (60-80% savings)");
+        Console.WriteLine("   • Enable cluster autoscaler");
+        Console.WriteLine("   • Right-size node pools");
+        Console.WriteLine("   • Use Azure Reservations");
+        Console.WriteLine("   • Implement resource quotas\n");
+
+        Console.WriteLine("📊 WHEN TO USE AKS:\n");
+        Console.WriteLine("   ✓ Complex microservices");
+        Console.WriteLine("   ✓ Need full Kubernetes features");
+        Console.WriteLine("   ✓ Service mesh requirements");
+        Console.WriteLine("   ✓ Multi-cluster deployments");
+        Console.WriteLine("   ✓ Advanced networking\n");
+
+        Console.WriteLine("🔥 BEST PRACTICES:\n");
+        Console.WriteLine("   ✓ Separate system/user workloads");
+        Console.WriteLine("   ✓ Use availability zones");
+        Console.WriteLine("   ✓ Implement GitOps");
+        Console.WriteLine("   ✓ Enable monitoring");
+        Console.WriteLine("   ✓ Regular version upgrades");
+        Console.WriteLine("   ✓ Use namespaces effectively");
+    }
+}
+

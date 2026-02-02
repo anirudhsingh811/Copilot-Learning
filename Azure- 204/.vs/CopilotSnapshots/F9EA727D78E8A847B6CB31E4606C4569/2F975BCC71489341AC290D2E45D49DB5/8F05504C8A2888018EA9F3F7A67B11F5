@@ -1,0 +1,520 @@
+﻿using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
+using System.Net;
+using System.Text.Json;
+
+namespace AZ204.Functions;
+
+/// <summary>
+/// Enterprise-grade Azure Functions with Durable Functions orchestration
+/// Implements: Saga pattern, Fan-out/Fan-in, Human interaction, Monitoring
+/// </summary>
+public class OrderProcessingOrchestration
+{
+    private readonly ILogger<OrderProcessingOrchestration> _logger;
+
+    public OrderProcessingOrchestration(ILogger<OrderProcessingOrchestration> logger)
+    {
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// HTTP Trigger to start order processing orchestration
+    /// </summary>
+    [Function(nameof(StartOrderProcessing))]
+    public async Task<HttpResponseData> StartOrderProcessing(
+        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
+        [DurableClient] DurableTaskClient client)
+    {
+        var requestBody = await req.ReadAsStringAsync();
+        var order = JsonSerializer.Deserialize<Order>(requestBody ?? "{}");
+
+        if (order == null || string.IsNullOrEmpty(order.OrderId))
+        {
+            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badResponse.WriteStringAsync("Invalid order data");
+            return badResponse;
+        }
+
+        _logger.LogInformation("Starting order processing for order {OrderId}", order.OrderId);
+
+        // Start orchestration
+        var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(
+            nameof(OrderOrchestrator),
+            order);
+
+        _logger.LogInformation(
+            "Started orchestration with ID = {InstanceId} for order {OrderId}",
+            instanceId, order.OrderId);
+
+        // Return management URLs for the orchestration
+        var response = req.CreateResponse(HttpStatusCode.Accepted);
+        await response.WriteAsJsonAsync(new
+        {
+            instanceId,
+            orderId = order.OrderId,
+            statusQueryGetUri = $"{req.Url.Scheme}://{req.Url.Authority}/api/orders/{instanceId}",
+            message = "Order processing started"
+        });
+
+        return response;
+    }
+
+    /// <summary>
+    /// Orchestrator function implementing Saga pattern for order processing
+    /// Handles: Inventory, Payment, Shipping with compensating transactions
+    /// </summary>
+    [Function(nameof(OrderOrchestrator))]
+    public async Task<OrderResult> OrderOrchestrator(
+        [OrchestrationTrigger] TaskOrchestrationContext context)
+    {
+        var order = context.GetInput<Order>()!;
+        var compensations = new List<Func<Task>>();
+
+        try
+        {
+            _logger = context.CreateReplaySafeLogger<OrderProcessingOrchestration>();
+            _logger.LogInformation(
+                "Order orchestration started for {OrderId} at {Timestamp}",
+                order.OrderId, context.CurrentUtcDateTime);
+
+            // Step 1: Validate Order
+            var validationResult = await context.CallActivityAsync<ValidationResult>(
+                nameof(ValidateOrderActivity),
+                order);
+
+            if (!validationResult.IsValid)
+            {
+                return new OrderResult
+                {
+                    OrderId = order.OrderId,
+                    Status = "Failed",
+                    Message = $"Validation failed: {validationResult.ErrorMessage}"
+                };
+            }
+
+            // Step 2: Reserve Inventory (with compensation)
+            var inventoryReserved = await context.CallActivityAsync<bool>(
+                nameof(ReserveInventoryActivity),
+                order);
+
+            if (!inventoryReserved)
+            {
+                return new OrderResult
+                {
+                    OrderId = order.OrderId,
+                    Status = "Failed",
+                    Message = "Insufficient inventory"
+                };
+            }
+
+            compensations.Add(async () =>
+                await context.CallActivityAsync(nameof(ReleaseInventoryActivity), order));
+
+            // Step 3: Process Payment (with compensation)
+            var paymentResult = await context.CallActivityAsync<PaymentResult>(
+                nameof(ProcessPaymentActivity),
+                order);
+
+            if (!paymentResult.Success)
+            {
+                // Execute compensating transactions
+                await ExecuteCompensationsAsync(context, compensations);
+                
+                return new OrderResult
+                {
+                    OrderId = order.OrderId,
+                    Status = "Failed",
+                    Message = $"Payment failed: {paymentResult.ErrorMessage}"
+                };
+            }
+
+            compensations.Add(async () =>
+                await context.CallActivityAsync(
+                    nameof(RefundPaymentActivity),
+                    paymentResult.TransactionId));
+
+            // Step 4: Update Order Status
+            await context.CallActivityAsync(
+                nameof(UpdateOrderStatusActivity),
+                new { order.OrderId, Status = "Processing" });
+
+            // Step 5: Fan-out/Fan-in for parallel processing
+            var parallelTasks = new List<Task>
+            {
+                context.CallActivityAsync(nameof(SendOrderConfirmationActivity), order),
+                context.CallActivityAsync(nameof(UpdateInventoryActivity), order),
+                context.CallActivityAsync(nameof(NotifyWarehouseActivity), order)
+            };
+
+            await Task.WhenAll(parallelTasks);
+
+            // Step 6: Wait for shipping approval (Human Interaction Pattern)
+            using var cts = new CancellationTokenSource();
+            var approvalTask = context.WaitForExternalEvent<bool>("ShippingApproval", cts.Token);
+            var timeoutTask = context.CreateTimer(
+                context.CurrentUtcDateTime.AddHours(24), 
+                cts.Token);
+
+            var winner = await Task.WhenAny(approvalTask, timeoutTask);
+
+            if (winner == timeoutTask)
+            {
+                _logger.LogWarning("Shipping approval timeout for order {OrderId}", order.OrderId);
+                await ExecuteCompensationsAsync(context, compensations);
+                
+                return new OrderResult
+                {
+                    OrderId = order.OrderId,
+                    Status = "Cancelled",
+                    Message = "Shipping approval timeout"
+                };
+            }
+
+            cts.Cancel(); // Cancel the timer
+            var approved = await approvalTask;
+
+            if (!approved)
+            {
+                await ExecuteCompensationsAsync(context, compensations);
+                
+                return new OrderResult
+                {
+                    OrderId = order.OrderId,
+                    Status = "Cancelled",
+                    Message = "Shipping not approved"
+                };
+            }
+
+            // Step 7: Initiate Shipping
+            var shippingResult = await context.CallActivityAsync<ShippingResult>(
+                nameof(InitiateShippingActivity),
+                order);
+
+            // Step 8: Monitor Shipping (Sub-orchestration)
+            var deliveryResult = await context.CallSubOrchestratorAsync<DeliveryResult>(
+                nameof(ShippingMonitorOrchestrator),
+                new { order.OrderId, shippingResult.TrackingNumber });
+
+            // Step 9: Final Status Update
+            await context.CallActivityAsync(
+                nameof(UpdateOrderStatusActivity),
+                new { order.OrderId, Status = "Delivered" });
+
+            return new OrderResult
+            {
+                OrderId = order.OrderId,
+                Status = "Delivered",
+                TrackingNumber = shippingResult.TrackingNumber,
+                DeliveredAt = deliveryResult.DeliveredAt
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing order {OrderId}", order.OrderId);
+            
+            // Execute all compensating transactions
+            await ExecuteCompensationsAsync(context, compensations);
+
+            return new OrderResult
+            {
+                OrderId = order.OrderId,
+                Status = "Failed",
+                Message = $"Order processing failed: {ex.Message}"
+            };
+        }
+    }
+
+    private async Task ExecuteCompensationsAsync(
+        TaskOrchestrationContext context,
+        List<Func<Task>> compensations)
+    {
+        _logger.LogWarning("Executing {Count} compensating transactions", compensations.Count);
+        
+        // Execute in reverse order
+        compensations.Reverse();
+        
+        foreach (var compensation in compensations)
+        {
+            try
+            {
+                await compensation();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Compensation transaction failed");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sub-orchestrator for monitoring shipping status
+    /// </summary>
+    [Function(nameof(ShippingMonitorOrchestrator))]
+    public async Task<DeliveryResult> ShippingMonitorOrchestrator(
+        [OrchestrationTrigger] TaskOrchestrationContext context)
+    {
+        var input = context.GetInput<dynamic>()!;
+        var trackingNumber = (string)input.TrackingNumber;
+        var maxAttempts = 48; // Monitor for 48 hours
+        var attempt = 0;
+
+        while (attempt < maxAttempts)
+        {
+            var status = await context.CallActivityAsync<string>(
+                nameof(CheckShippingStatusActivity),
+                trackingNumber);
+
+            if (status == "Delivered")
+            {
+                return new DeliveryResult
+                {
+                    Status = "Delivered",
+                    DeliveredAt = context.CurrentUtcDateTime
+                };
+            }
+
+            // Wait 1 hour before checking again
+            await context.CreateTimer(context.CurrentUtcDateTime.AddHours(1), CancellationToken.None);
+            attempt++;
+        }
+
+        return new DeliveryResult
+        {
+            Status = "InTransit",
+            DeliveredAt = null
+        };
+    }
+
+    // Activity Functions
+
+    [Function(nameof(ValidateOrderActivity))]
+    public ValidationResult ValidateOrderActivity([ActivityTrigger] Order order)
+    {
+        _logger.LogInformation("Validating order {OrderId}", order.OrderId);
+
+        if (order.Items == null || !order.Items.Any())
+        {
+            return new ValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "Order must contain at least one item"
+            };
+        }
+
+        if (order.TotalAmount <= 0)
+        {
+            return new ValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "Invalid order amount"
+            };
+        }
+
+        return new ValidationResult { IsValid = true };
+    }
+
+    [Function(nameof(ReserveInventoryActivity))]
+    public async Task<bool> ReserveInventoryActivity(
+        [ActivityTrigger] Order order,
+        FunctionContext context)
+    {
+        _logger.LogInformation("Reserving inventory for order {OrderId}", order.OrderId);
+        
+        // Call inventory service
+        // Check stock availability for all items
+        // Reserve items
+        
+        await Task.Delay(100); // Simulate external call
+        return true;
+    }
+
+    [Function(nameof(ReleaseInventoryActivity))]
+    public async Task ReleaseInventoryActivity([ActivityTrigger] Order order)
+    {
+        _logger.LogInformation("Releasing inventory for order {OrderId}", order.OrderId);
+        await Task.Delay(100); // Simulate external call
+    }
+
+    [Function(nameof(ProcessPaymentActivity))]
+    public async Task<PaymentResult> ProcessPaymentActivity([ActivityTrigger] Order order)
+    {
+        _logger.LogInformation("Processing payment for order {OrderId}", order.OrderId);
+        
+        // Call payment gateway
+        // Process payment
+        
+        await Task.Delay(100); // Simulate external call
+        
+        return new PaymentResult
+        {
+            Success = true,
+            TransactionId = Guid.NewGuid().ToString()
+        };
+    }
+
+    [Function(nameof(RefundPaymentActivity))]
+    public async Task RefundPaymentActivity([ActivityTrigger] string transactionId)
+    {
+        _logger.LogInformation("Refunding payment {TransactionId}", transactionId);
+        await Task.Delay(100); // Simulate external call
+    }
+
+    [Function(nameof(UpdateOrderStatusActivity))]
+    public async Task UpdateOrderStatusActivity([ActivityTrigger] dynamic input)
+    {
+        var orderId = (string)input.OrderId;
+        var status = (string)input.Status;
+        
+        _logger.LogInformation("Updating order {OrderId} status to {Status}", orderId, status);
+        await Task.Delay(50); // Simulate database call
+    }
+
+    [Function(nameof(SendOrderConfirmationActivity))]
+    public async Task SendOrderConfirmationActivity([ActivityTrigger] Order order)
+    {
+        _logger.LogInformation("Sending confirmation email for order {OrderId}", order.OrderId);
+        await Task.Delay(50); // Simulate email service call
+    }
+
+    [Function(nameof(UpdateInventoryActivity))]
+    public async Task UpdateInventoryActivity([ActivityTrigger] Order order)
+    {
+        _logger.LogInformation("Updating inventory for order {OrderId}", order.OrderId);
+        await Task.Delay(50);
+    }
+
+    [Function(nameof(NotifyWarehouseActivity))]
+    public async Task NotifyWarehouseActivity([ActivityTrigger] Order order)
+    {
+        _logger.LogInformation("Notifying warehouse for order {OrderId}", order.OrderId);
+        await Task.Delay(50);
+    }
+
+    [Function(nameof(InitiateShippingActivity))]
+    public async Task<ShippingResult> InitiateShippingActivity([ActivityTrigger] Order order)
+    {
+        _logger.LogInformation("Initiating shipping for order {OrderId}", order.OrderId);
+        await Task.Delay(100);
+        
+        return new ShippingResult
+        {
+            Success = true,
+            TrackingNumber = $"TRACK-{Guid.NewGuid().ToString()[..8].ToUpper()}"
+        };
+    }
+
+    [Function(nameof(CheckShippingStatusActivity))]
+    public async Task<string> CheckShippingStatusActivity([ActivityTrigger] string trackingNumber)
+    {
+        _logger.LogInformation("Checking shipping status for {TrackingNumber}", trackingNumber);
+        await Task.Delay(50);
+        
+        // Simulate status check
+        return Random.Shared.Next(100) < 10 ? "Delivered" : "InTransit";
+    }
+
+    /// <summary>
+    /// HTTP endpoint to approve shipping (Human Interaction Pattern)
+    /// </summary>
+    [Function(nameof(ApproveShipping))]
+    public async Task<HttpResponseData> ApproveShipping(
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders/{instanceId}/approve")]
+        HttpRequestData req,
+        [DurableClient] DurableTaskClient client,
+        string instanceId)
+    {
+        _logger.LogInformation("Approving shipping for instance {InstanceId}", instanceId);
+
+        await client.RaiseEventAsync(instanceId, "ShippingApproval", true);
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteStringAsync("Shipping approved");
+        return response;
+    }
+
+    /// <summary>
+    /// HTTP endpoint to check orchestration status
+    /// </summary>
+    [Function(nameof(GetOrderStatus))]
+    public async Task<HttpResponseData> GetOrderStatus(
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "orders/{instanceId}")]
+        HttpRequestData req,
+        [DurableClient] DurableTaskClient client,
+        string instanceId)
+    {
+        var metadata = await client.GetInstanceAsync(instanceId);
+
+        if (metadata == null)
+        {
+            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+            return notFoundResponse;
+        }
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(new
+        {
+            instanceId,
+            runtimeStatus = metadata.RuntimeStatus.ToString(),
+            createdAt = metadata.CreatedAt,
+            lastUpdatedAt = metadata.LastUpdatedAt,
+            output = metadata.SerializedOutput
+        });
+
+        return response;
+    }
+}
+
+// Model classes
+public class Order
+{
+    public string OrderId { get; set; } = string.Empty;
+    public string CustomerId { get; set; } = string.Empty;
+    public List<OrderItem> Items { get; set; } = new();
+    public decimal TotalAmount { get; set; }
+    public string ShippingAddress { get; set; } = string.Empty;
+}
+
+public class OrderItem
+{
+    public string ProductId { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public decimal Price { get; set; }
+}
+
+public class ValidationResult
+{
+    public bool IsValid { get; set; }
+    public string ErrorMessage { get; set; } = string.Empty;
+}
+
+public class PaymentResult
+{
+    public bool Success { get; set; }
+    public string TransactionId { get; set; } = string.Empty;
+    public string ErrorMessage { get; set; } = string.Empty;
+}
+
+public class ShippingResult
+{
+    public bool Success { get; set; }
+    public string TrackingNumber { get; set; } = string.Empty;
+}
+
+public class OrderResult
+{
+    public string OrderId { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string? TrackingNumber { get; set; }
+    public DateTime? DeliveredAt { get; set; }
+}
+
+public class DeliveryResult
+{
+    public string Status { get; set; } = string.Empty;
+    public DateTime? DeliveredAt { get; set; }
+}

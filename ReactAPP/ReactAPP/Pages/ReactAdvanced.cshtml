@@ -1,0 +1,30 @@
+@page
+@model ReactAPP.Pages.ReactAdvancedModel
+@{
+    ViewData["Title"] = "React Advanced Patterns";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - React Learning App</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <div id="root-advanced"></div>
+    <div id="modal-root"></div>
+
+    <!-- React and ReactDOM from CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel Standalone for JSX transformation -->
+    <script src="https://unpkg.com/@@babel/standalone/babel.min.js"></script>
+    
+    <!-- Your React App -->
+    <script type="text/babel" src="~/react-app/advanced.jsx"></script>
+</body>
+</html>

@@ -1,0 +1,243 @@
+﻿using Azure.Core;
+using Azure.Identity;
+using Azure.ResourceManager;
+using Azure.ResourceManager.AppService;
+using Azure.ResourceManager.AppService.Models;
+using Azure.ResourceManager.Resources;
+using Azure.ResourceManager.Storage;
+using Azure.ResourceManager.Storage.Models;
+using Microsoft.Extensions.Logging;
+
+namespace AZ204.Functions;
+
+/// <summary>
+/// Service for managing Azure Function Apps - Deployment, Configuration, and Operations
+/// </summary>
+public class FunctionAppManager
+{
+    private readonly ArmClient _armClient;
+    private readonly ILogger<FunctionAppManager> _logger;
+
+    public FunctionAppManager(ILogger<FunctionAppManager> logger, TokenCredential? credential = null)
+    {
+        _logger = logger;
+        _armClient = new ArmClient(credential ?? new DefaultAzureCredential());
+    }
+
+    /// <summary>
+    /// Creates a Function App with storage account
+    /// </summary>
+    public async Task<WebSiteResource> CreateFunctionAppAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string functionAppName,
+        string storageAccountName,
+        string location = "eastus",
+        bool isPremium = false,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Creating Function App '{FunctionAppName}'", functionAppName);
+
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+
+        // 1. Create Storage Account (required for Functions)
+        _logger.LogInformation("Creating storage account '{StorageAccountName}'", storageAccountName);
+        var storageAccountData = new StorageAccountCreateOrUpdateContent(
+            new StorageSku(StorageSkuName.StandardLrs), 
+            StorageKind.StorageV2, 
+            new Azure.Core.AzureLocation(location));
+
+        var storageAccountCollection = resourceGroup.Value.GetStorageAccounts();
+        var storageAccountOperation = await storageAccountCollection.CreateOrUpdateAsync(
+            Azure.WaitUntil.Completed,
+            storageAccountName,
+            storageAccountData,
+            cancellationToken);
+
+        var storageAccount = storageAccountOperation.Value;
+
+        // Get storage connection string
+        var keys = await storageAccount.GetKeysAsync(cancellationToken: cancellationToken).FirstOrDefaultAsync(cancellationToken);
+        var connectionString = $"DefaultEndpointsProtocol=https;AccountName={storageAccountName};AccountKey={keys.Value};EndpointSuffix=core.windows.net";
+
+        // 2. Create App Service Plan
+        var planName = isPremium ? $"{functionAppName}-premium-plan" : $"{functionAppName}-consumption-plan";
+        _logger.LogInformation("Creating App Service Plan '{PlanName}'", planName);
+
+        var planData = new AppServicePlanData(new Azure.Core.AzureLocation(location))
+        {
+            Sku = isPremium 
+                ? new AppServiceSkuDescription { Name = "EP1", Tier = "ElasticPremium", Size = "EP1", Family = "EP" }
+                : new AppServiceSkuDescription { Name = "Y1", Tier = "Dynamic", Size = "Y1", Family = "Y" }
+        };
+
+        var planCollection = resourceGroup.Value.GetAppServicePlans();
+        var planOperation = await planCollection.CreateOrUpdateAsync(
+            Azure.WaitUntil.Completed,
+            planName,
+            planData,
+            cancellationToken);
+
+        // 3. Create Function App
+        _logger.LogInformation("Creating Function App '{FunctionAppName}'", functionAppName);
+        
+        var functionAppData = new WebSiteData(new Azure.Core.AzureLocation(location))
+        {
+            AppServicePlanId = planOperation.Value.Id,
+            Kind = "functionapp",
+            SiteConfig = new SiteConfigProperties
+            {
+                AppSettings =
+                {
+                    new AppServiceNameValuePair { Name = "AzureWebJobsStorage", Value = connectionString },
+                    new AppServiceNameValuePair { Name = "FUNCTIONS_EXTENSION_VERSION", Value = "~4" },
+                    new AppServiceNameValuePair { Name = "FUNCTIONS_WORKER_RUNTIME", Value = "dotnet-isolated" },
+                    new AppServiceNameValuePair { Name = "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING", Value = connectionString },
+                    new AppServiceNameValuePair { Name = "WEBSITE_CONTENTSHARE", Value = functionAppName.ToLowerInvariant() }
+                }
+            }
+        };
+
+        var webSiteCollection = resourceGroup.Value.GetWebSites();
+        var functionApp = await webSiteCollection.CreateOrUpdateAsync(
+            Azure.WaitUntil.Completed,
+            functionAppName,
+            functionAppData,
+            cancellationToken);
+
+        _logger.LogInformation("Successfully created Function App '{FunctionAppName}'", functionAppName);
+        return functionApp.Value;
+    }
+
+    /// <summary>
+    /// Gets Function App configuration
+    /// </summary>
+    public async Task<Dictionary<string, string>> GetFunctionAppSettingsAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string functionAppName,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+        var functionApp = await resourceGroup.Value.GetWebSiteAsync(functionAppName, cancellationToken);
+
+        var settings = new Dictionary<string, string>();
+        if (functionApp.Value.Data.SiteConfig?.AppSettings != null)
+        {
+            foreach (var setting in functionApp.Value.Data.SiteConfig.AppSettings)
+            {
+                settings[setting.Name] = setting.Value;
+            }
+        }
+
+        return settings;
+    }
+
+    /// <summary>
+    /// Updates Function App settings
+    /// </summary>
+    public async Task UpdateFunctionAppSettingsAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string functionAppName,
+        Dictionary<string, string> settings,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Updating Function App settings for '{FunctionAppName}'", functionAppName);
+
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+        var functionApp = await resourceGroup.Value.GetWebSiteAsync(functionAppName, cancellationToken);
+
+        var config = functionApp.Value.Data.SiteConfig;
+        config.AppSettings.Clear();
+
+        foreach (var setting in settings)
+        {
+            config.AppSettings.Add(new AppServiceNameValuePair { Name = setting.Key, Value = setting.Value });
+        }
+
+        var patchInfo = new SitePatchInfo
+        {
+            SiteConfig = config
+        };
+
+        await functionApp.Value.UpdateAsync(patchInfo, cancellationToken);
+        _logger.LogInformation("Successfully updated Function App settings");
+    }
+
+    /// <summary>
+    /// Restarts Function App
+    /// </summary>
+    public async Task RestartFunctionAppAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string functionAppName,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Restarting Function App '{FunctionAppName}'", functionAppName);
+
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+        var functionApp = await resourceGroup.Value.GetWebSiteAsync(functionAppName, cancellationToken);
+
+        await functionApp.Value.RestartAsync(cancellationToken: cancellationToken);
+        _logger.LogInformation("Successfully restarted Function App");
+    }
+
+    /// <summary>
+    /// Lists all functions in a Function App
+    /// </summary>
+    public async Task<List<string>> ListFunctionsAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string functionAppName,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+        var functionApp = await resourceGroup.Value.GetWebSiteAsync(functionAppName, cancellationToken);
+
+        var functions = new List<string>();
+        
+        await foreach (var function in functionApp.Value.GetSiteFunctions().GetAllAsync(cancellationToken))
+        {
+            functions.Add(function.Data.Name);
+        }
+
+        return functions;
+    }
+
+    /// <summary>
+    /// Deletes Function App
+    /// </summary>
+    public async Task DeleteFunctionAppAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string functionAppName,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Deleting Function App '{FunctionAppName}'", functionAppName);
+
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+        var functionApp = await resourceGroup.Value.GetWebSiteAsync(functionAppName, cancellationToken);
+
+        await functionApp.Value.DeleteAsync(Azure.WaitUntil.Completed, cancellationToken: cancellationToken);
+        _logger.LogInformation("Successfully deleted Function App");
+    }
+}

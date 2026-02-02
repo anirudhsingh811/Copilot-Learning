@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Azure- 204.csproj" />
+  <Project Path="SimpleWebApp/SimpleWebApp.csproj" />
+</Solution>

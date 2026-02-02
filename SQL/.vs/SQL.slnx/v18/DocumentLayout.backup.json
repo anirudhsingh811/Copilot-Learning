@@ -1,0 +1,371 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\INASING7\\source\\repos\\SQL\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\readme_sql_preparation.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\readme_sql_preparation.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\01_ddl_operations.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\01_ddl_operations.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\02_dml_operations.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\02_dml_operations.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\03_joins_subqueries.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\03_joins_subqueries.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\04_window_functions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\04_window_functions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\05_ctes_recursive.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\05_ctes_recursive.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\06_performance_optimization.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\06_performance_optimization.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\07_transactions_concurrency.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\07_transactions_concurrency.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\08_interview_questions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\08_interview_questions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\database_setup.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\database_setup.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\quick_reference.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\quick_reference.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\sql.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\sql.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\project_summary.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\project_summary.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|c:\\users\\inasing7\\source\\repos\\sql\\sql\\top_50_interview_questions.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A3E09605-5D74-4DCD-ACCE-D5E1194DB170}|SQL\\SQL.csproj|solutionrelative:sql\\top_50_interview_questions.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 37,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:131:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:133:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:135:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:137:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:138:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:140:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:141:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:142:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:134:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:139:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:144:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:145:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:146:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:147:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:132:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:130:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:136:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:133:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:143:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:2:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "TOP_50_INTERVIEW_QUESTIONS.md",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\TOP_50_INTERVIEW_QUESTIONS.md",
+              "RelativeDocumentMoniker": "SQL\\TOP_50_INTERVIEW_QUESTIONS.md",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\TOP_50_INTERVIEW_QUESTIONS.md",
+              "RelativeToolTip": "SQL\\TOP_50_INTERVIEW_QUESTIONS.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAALMCAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-02-01T14:31:26.777Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "PROJECT_SUMMARY.md",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\PROJECT_SUMMARY.md",
+              "RelativeDocumentMoniker": "SQL\\PROJECT_SUMMARY.md",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\PROJECT_SUMMARY.md",
+              "RelativeToolTip": "SQL\\PROJECT_SUMMARY.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADYBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-02-01T14:30:31.536Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "SQL",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\SQL.csproj",
+              "RelativeDocumentMoniker": "SQL\\SQL.csproj",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\SQL.csproj",
+              "RelativeToolTip": "SQL\\SQL.csproj",
+              "ViewState": "AgIAAAwAAAAAAAAAAABBwA0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-02-01T14:29:46.202Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "QUICK_REFERENCE.md",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\QUICK_REFERENCE.md",
+              "RelativeDocumentMoniker": "SQL\\QUICK_REFERENCE.md",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\QUICK_REFERENCE.md",
+              "RelativeToolTip": "SQL\\QUICK_REFERENCE.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQCAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-02-01T14:29:29.284Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "DATABASE_SETUP.md",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\DATABASE_SETUP.md",
+              "RelativeDocumentMoniker": "SQL\\DATABASE_SETUP.md",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\DATABASE_SETUP.md",
+              "RelativeToolTip": "SQL\\DATABASE_SETUP.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABwBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-02-01T14:28:47.387Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "08_Interview_Questions.cs",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\08_Interview_Questions.cs",
+              "RelativeDocumentMoniker": "SQL\\08_Interview_Questions.cs",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\08_Interview_Questions.cs",
+              "RelativeToolTip": "SQL\\08_Interview_Questions.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAPkDAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-01T14:27:50.435Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "07_Transactions_Concurrency.cs",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\07_Transactions_Concurrency.cs",
+              "RelativeDocumentMoniker": "SQL\\07_Transactions_Concurrency.cs",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\07_Transactions_Concurrency.cs",
+              "RelativeToolTip": "SQL\\07_Transactions_Concurrency.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADIDAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-01T14:26:23.554Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "06_Performance_Optimization.cs",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\06_Performance_Optimization.cs",
+              "RelativeDocumentMoniker": "SQL\\06_Performance_Optimization.cs",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\06_Performance_Optimization.cs",
+              "RelativeToolTip": "SQL\\06_Performance_Optimization.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAKYCAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-01T14:25:04.073Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "05_CTEs_Recursive.cs",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\05_CTEs_Recursive.cs",
+              "RelativeDocumentMoniker": "SQL\\05_CTEs_Recursive.cs",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\05_CTEs_Recursive.cs",
+              "RelativeToolTip": "SQL\\05_CTEs_Recursive.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAI0CAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-01T14:23:51.711Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "04_Window_Functions.cs",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\04_Window_Functions.cs",
+              "RelativeDocumentMoniker": "SQL\\04_Window_Functions.cs",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\04_Window_Functions.cs",
+              "RelativeToolTip": "SQL\\04_Window_Functions.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADICAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-01T14:22:54.621Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "03_Joins_Subqueries.cs",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\03_Joins_Subqueries.cs",
+              "RelativeDocumentMoniker": "SQL\\03_Joins_Subqueries.cs",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\03_Joins_Subqueries.cs",
+              "RelativeToolTip": "SQL\\03_Joins_Subqueries.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAANwCAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-01T14:21:59.241Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "02_DML_Operations.cs",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\02_DML_Operations.cs",
+              "RelativeDocumentMoniker": "SQL\\02_DML_Operations.cs",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\02_DML_Operations.cs",
+              "RelativeToolTip": "SQL\\02_DML_Operations.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAPsBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-01T14:21:01.193Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "01_DDL_Operations.cs",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\01_DDL_Operations.cs",
+              "RelativeDocumentMoniker": "SQL\\01_DDL_Operations.cs",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\01_DDL_Operations.cs",
+              "RelativeToolTip": "SQL\\01_DDL_Operations.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAFwBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-01T14:20:19.114Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "README_SQL_PREPARATION.md",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\README_SQL_PREPARATION.md",
+              "RelativeDocumentMoniker": "SQL\\README_SQL_PREPARATION.md",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\README_SQL_PREPARATION.md",
+              "RelativeToolTip": "SQL\\README_SQL_PREPARATION.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAF4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-02-01T14:19:46.549Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\Program.cs",
+              "RelativeDocumentMoniker": "SQL\\Program.cs",
+              "ToolTip": "C:\\Users\\INASING7\\source\\repos\\SQL\\SQL\\Program.cs",
+              "RelativeToolTip": "SQL\\Program.cs",
+              "ViewState": "AgIAAGgAAAAAAAAAAAAmwIwAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-01T14:18:38.341Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

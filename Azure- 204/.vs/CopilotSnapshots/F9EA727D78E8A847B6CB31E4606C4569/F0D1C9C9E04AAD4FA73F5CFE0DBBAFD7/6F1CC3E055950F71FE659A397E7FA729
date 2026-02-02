@@ -1,0 +1,401 @@
+﻿using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.AspNetCore.Http;
+using Polly;
+using Polly.Extensions.Http;
+using System.Data;
+using System.Diagnostics;
+
+namespace AZ204.AppService;
+
+/// <summary>
+/// Enterprise-grade App Service configuration with Key Vault integration,
+/// custom health checks, and application insights.
+/// </summary>
+public class AppServiceConfiguration
+{
+    /// <summary>
+    /// Configure services for production-ready App Service deployment
+    /// Includes: Key Vault, Managed Identity, Health Checks, Resilience Policies
+    /// </summary>
+    public static IHostBuilder ConfigureAppService(IHostBuilder builder)
+    {
+        return builder.ConfigureServices((context, services) =>
+        {
+            var configuration = context.Configuration;
+
+            // 1. Key Vault Integration with Managed Identity
+            ConfigureKeyVault(services, configuration);
+
+            // 2. Application Insights with custom telemetry
+            ConfigureApplicationInsights(services, configuration);
+
+            // 3. Health Checks for App Service
+            ConfigureHealthChecks(services, configuration);
+
+            // 4. HTTP Client with Polly Resilience Policies
+            ConfigureHttpClients(services);
+
+            // 5. Distributed Caching (Redis)
+            ConfigureDistributedCache(services, configuration);
+
+            // 6. Background Services
+            services.AddHostedService<MetricsCollectorService>();
+        });
+    }
+
+    private static void ConfigureKeyVault(IServiceCollection services, IConfiguration configuration)
+    {
+        var keyVaultUrl = configuration["KeyVault:VaultUrl"];
+        if (!string.IsNullOrEmpty(keyVaultUrl))
+        {
+            // Use Managed Identity for authentication
+            var credential = new DefaultAzureCredential();
+            var secretClient = new SecretClient(new Uri(keyVaultUrl), credential);
+            
+            services.AddSingleton(secretClient);
+            services.AddSingleton<ISecretManager, KeyVaultSecretManager>();
+        }
+    }
+
+    private static void ConfigureApplicationInsights(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddApplicationInsightsTelemetry(options =>
+        {
+            options.ConnectionString = configuration["ApplicationInsights:ConnectionString"];
+            options.EnableAdaptiveSampling = true;
+            options.EnablePerformanceCounterCollectionModule = true;
+            options.EnableDependencyTrackingTelemetryModule = true;
+        });
+
+        // Custom telemetry initializer
+        services.AddSingleton<ITelemetryInitializer, CustomTelemetryInitializer>();
+    }
+
+    private static void ConfigureHealthChecks(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddHealthChecks()
+            .AddCheck<DatabaseHealthCheck>("database")
+            .AddCheck<RedisHealthCheck>("redis");
+            // Note: Azure-specific health checks require additional packages
+            // .AddAzureBlobStorage() - requires AspNetCore.HealthChecks.AzureStorage
+            // .AddAzureServiceBusQueue() - requires AspNetCore.HealthChecks.AzureServiceBus
+    }
+
+    private static void ConfigureHttpClients(IServiceCollection services)
+    {
+        // Typed HTTP Client with Polly resilience policies
+        // Note: IExternalApiClient would need to be defined in your project
+        // services.AddHttpClient<IExternalApiClient, ExternalApiClient>()
+        //     .AddPolicyHandler(GetRetryPolicy())
+        //     .AddPolicyHandler(GetCircuitBreakerPolicy())
+        //     .AddPolicyHandler(GetTimeoutPolicy());
+        
+        // Example with generic HttpClient:
+        services.AddHttpClient("ResilientClient")
+            .AddPolicyHandler(GetRetryPolicy())
+            .AddPolicyHandler(GetCircuitBreakerPolicy())
+            .AddPolicyHandler(GetTimeoutPolicy());
+    }
+
+    private static void ConfigureDistributedCache(IServiceCollection services, IConfiguration configuration)
+    {
+        var redisConnection = configuration["Redis:ConnectionString"];
+        if (!string.IsNullOrEmpty(redisConnection))
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnection;
+                options.InstanceName = "AZ204_";
+            });
+        }
+        else
+        {
+            // Fallback to in-memory cache for development
+            services.AddDistributedMemoryCache();
+        }
+    }
+
+    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            .WaitAndRetryAsync(
+                retryCount: 3,
+                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                onRetry: (outcome, timespan, retryCount, context) =>
+                {
+                    // Log retry attempts
+                    var logger = context.GetLogger();
+                    logger?.LogWarning("Retry {RetryCount} after {Delay}ms", retryCount, timespan.TotalMilliseconds);
+                });
+    }
+
+    private static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .CircuitBreakerAsync(
+                handledEventsAllowedBeforeBreaking: 5,
+                durationOfBreak: TimeSpan.FromSeconds(30),
+                onBreak: (outcome, timespan) =>
+                {
+                    // Log circuit breaker opened
+                },
+                onReset: () =>
+                {
+                    // Log circuit breaker reset
+                });
+    }
+
+    private static IAsyncPolicy<HttpResponseMessage> GetTimeoutPolicy()
+    {
+        return Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromSeconds(10));
+    }
+}
+
+/// <summary>
+/// Key Vault secret management with caching and refresh
+/// </summary>
+public interface ISecretManager
+{
+    Task<string> GetSecretAsync(string secretName, CancellationToken cancellationToken = default);
+    Task<Dictionary<string, string>> GetAllSecretsAsync(CancellationToken cancellationToken = default);
+}
+
+public class KeyVaultSecretManager : ISecretManager
+{
+    private readonly SecretClient _secretClient;
+    private readonly ILogger<KeyVaultSecretManager> _logger;
+    private readonly Dictionary<string, CachedSecret> _secretCache = new();
+    private readonly SemaphoreSlim _cacheLock = new(1, 1);
+    private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(15);
+
+    public KeyVaultSecretManager(SecretClient secretClient, ILogger<KeyVaultSecretManager> logger)
+    {
+        _secretClient = secretClient;
+        _logger = logger;
+    }
+
+    public async Task<string> GetSecretAsync(string secretName, CancellationToken cancellationToken = default)
+    {
+        await _cacheLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_secretCache.TryGetValue(secretName, out var cached) && 
+                cached.ExpiresAt > DateTime.UtcNow)
+            {
+                _logger.LogDebug("Retrieved secret {SecretName} from cache", secretName);
+                return cached.Value;
+            }
+
+            _logger.LogInformation("Fetching secret {SecretName} from Key Vault", secretName);
+            var secret = await _secretClient.GetSecretAsync(secretName, cancellationToken: cancellationToken);
+            
+            _secretCache[secretName] = new CachedSecret
+            {
+                Value = secret.Value.Value,
+                ExpiresAt = DateTime.UtcNow.Add(_cacheExpiration)
+            };
+
+            return secret.Value.Value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve secret {SecretName}", secretName);
+            throw;
+        }
+        finally
+        {
+            _cacheLock.Release();
+        }
+    }
+
+    public async Task<Dictionary<string, string>> GetAllSecretsAsync(CancellationToken cancellationToken = default)
+    {
+        var secrets = new Dictionary<string, string>();
+        await foreach (var secretProperties in _secretClient.GetPropertiesOfSecretsAsync(cancellationToken))
+        {
+            if (secretProperties.Enabled == true)
+            {
+                var secret = await GetSecretAsync(secretProperties.Name, cancellationToken);
+                secrets[secretProperties.Name] = secret;
+            }
+        }
+        return secrets;
+    }
+
+    private class CachedSecret
+    {
+        public string Value { get; set; } = string.Empty;
+        public DateTime ExpiresAt { get; set; }
+    }
+}
+
+/// <summary>
+/// Custom telemetry initializer for enriching Application Insights data
+/// </summary>
+public class CustomTelemetryInitializer : ITelemetryInitializer
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    public CustomTelemetryInitializer(IHttpContextAccessor httpContextAccessor)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    public void Initialize(ITelemetry telemetry)
+    {
+        var context = _httpContextAccessor.HttpContext;
+        if (context != null)
+        {
+            telemetry.Context.GlobalProperties["CustomerId"] = 
+                context.User?.FindFirst("customer_id")?.Value ?? "anonymous";
+            telemetry.Context.GlobalProperties["AppVersion"] = 
+                GetType().Assembly.GetName().Version?.ToString() ?? "unknown";
+            telemetry.Context.GlobalProperties["Environment"] = 
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "unknown";
+        }
+    }
+}
+
+/// <summary>
+/// Background service for collecting custom metrics
+/// </summary>
+public class MetricsCollectorService : BackgroundService
+{
+    private readonly ILogger<MetricsCollectorService> _logger;
+    private readonly TelemetryClient _telemetryClient;
+
+    public MetricsCollectorService(
+        ILogger<MetricsCollectorService> logger,
+        TelemetryClient telemetryClient)
+    {
+        _logger = logger;
+        _telemetryClient = telemetryClient;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Metrics Collector Service started");
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                // Collect custom metrics
+                var process = Process.GetCurrentProcess();
+                
+                _telemetryClient.GetMetric("App.Memory.WorkingSet").TrackValue(
+                    process.WorkingSet64 / 1024.0 / 1024.0); // MB
+                
+                _telemetryClient.GetMetric("App.Threads.Count").TrackValue(
+                    process.Threads.Count);
+
+                _telemetryClient.GetMetric("App.Handles.Count").TrackValue(
+                    process.HandleCount);
+
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error collecting metrics");
+            }
+        }
+
+        _logger.LogInformation("Metrics Collector Service stopped");
+    }
+}
+
+// Health Check Implementations
+public class DatabaseHealthCheck : IHealthCheck
+{
+    private readonly IDbConnection _dbConnection;
+
+    public DatabaseHealthCheck(IDbConnection dbConnection)
+    {
+        _dbConnection = dbConnection;
+    }
+
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context, 
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _dbConnection.ExecuteScalarAsync<int>("SELECT 1");
+            return HealthCheckResult.Healthy("Database is responsive");
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("Database is not responsive", ex);
+        }
+    }
+}
+
+public class RedisHealthCheck : IHealthCheck
+{
+    private readonly IDistributedCache _cache;
+
+    public RedisHealthCheck(IDistributedCache cache)
+    {
+        _cache = cache;
+    }
+
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context, 
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var testKey = $"healthcheck_{Guid.NewGuid()}";
+            await _cache.SetStringAsync(testKey, "test", cancellationToken);
+            var value = await _cache.GetStringAsync(testKey, cancellationToken);
+            await _cache.RemoveAsync(testKey, cancellationToken);
+            
+            return value == "test" 
+                ? HealthCheckResult.Healthy("Redis cache is responsive")
+                : HealthCheckResult.Degraded("Redis cache returned unexpected value");
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("Redis cache is not responsive", ex);
+        }
+    }
+}
+
+public class ExternalApiHealthCheck : IHealthCheck
+{
+    private readonly IExternalApiClient _apiClient;
+
+    public ExternalApiHealthCheck(IExternalApiClient apiClient)
+    {
+        _apiClient = apiClient;
+    }
+
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context, 
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var isHealthy = await _apiClient.HealthCheckAsync(cancellationToken);
+            return isHealthy 
+                ? HealthCheckResult.Healthy("External API is responsive")
+                : HealthCheckResult.Unhealthy("External API health check failed");
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("External API is not responsive", ex);
+        }
+    }
+}

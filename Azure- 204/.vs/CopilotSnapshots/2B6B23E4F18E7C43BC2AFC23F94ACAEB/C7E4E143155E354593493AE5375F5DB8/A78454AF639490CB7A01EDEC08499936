@@ -1,0 +1,130 @@
+﻿using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+
+namespace AZ204.RealFunctions;
+
+/// <summary>
+/// Real Blob Triggered Azure Functions
+/// Triggered when files are uploaded to Azure Blob Storage
+/// </summary>
+public class BlobTriggerFunctions
+{
+    private readonly ILogger<BlobTriggerFunctions> _logger;
+
+    public BlobTriggerFunctions(ILogger<BlobTriggerFunctions> logger)
+    {
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Processes images uploaded to the "uploads" container
+    /// Automatically creates thumbnails
+    /// </summary>
+    [Function("ImageThumbnailGenerator")]
+    public async Task GenerateThumbnail(
+        [BlobTrigger("uploads/{name}", Connection = "StorageConnection")] byte[] imageBlob,
+        string name,
+        [BlobOutput("thumbnails/{name}", Connection = "StorageConnection")] byte[] thumbnailBlob)
+    {
+        _logger.LogInformation($"🖼️  Processing image: {name}");
+        _logger.LogInformation($"   Size: {imageBlob.Length / 1024} KB");
+
+        try
+        {
+            // Simulate thumbnail generation
+            _logger.LogInformation("🖼️  Step 1: Validating image format...");
+            await Task.Delay(200);
+
+            _logger.LogInformation("🖼️  Step 2: Generating thumbnail (200x200)...");
+            await Task.Delay(500);
+
+            _logger.LogInformation("🖼️  Step 3: Optimizing image quality...");
+            await Task.Delay(300);
+
+            // In real implementation, you'd use ImageSharp or similar library
+            // thumbnailBlob = GenerateActualThumbnail(imageBlob);
+
+            _logger.LogInformation($"✅ Thumbnail created for {name}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"❌ Failed to generate thumbnail for {name}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Processes CSV files for data import
+    /// Triggered when files are uploaded to "data-imports" container
+    /// </summary>
+    [Function("ProcessCsvImport")]
+    public async Task ProcessCsvFile(
+        [BlobTrigger("data-imports/{name}.csv", Connection = "StorageConnection")] Stream csvStream,
+        string name)
+    {
+        _logger.LogInformation($"📊 Processing CSV file: {name}.csv");
+
+        try
+        {
+            using var reader = new StreamReader(csvStream);
+            
+            _logger.LogInformation("📊 Step 1: Reading CSV data...");
+            var lineCount = 0;
+            while (!reader.EndOfStream)
+            {
+                var line = await reader.ReadLineAsync();
+                lineCount++;
+            }
+
+            _logger.LogInformation($"📊 Step 2: Parsed {lineCount} rows");
+            await Task.Delay(500);
+
+            _logger.LogInformation("📊 Step 3: Validating data...");
+            await Task.Delay(300);
+
+            _logger.LogInformation("📊 Step 4: Importing to database...");
+            await Task.Delay(1000);
+
+            _logger.LogInformation($"✅ Successfully imported {lineCount} records from {name}.csv");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"❌ Failed to process CSV file: {name}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Archives old documents
+    /// Triggered when files are uploaded to "documents" container
+    /// Moves them to "archive" after processing
+    /// </summary>
+    [Function("ArchiveDocument")]
+    public async Task ArchiveDocument(
+        [BlobTrigger("documents/{name}", Connection = "StorageConnection")] Stream documentStream,
+        string name,
+        [BlobOutput("archive/{name}", Connection = "StorageConnection")] Stream archiveStream)
+    {
+        _logger.LogInformation($"📁 Archiving document: {name}");
+
+        try
+        {
+            _logger.LogInformation("📁 Step 1: Scanning for sensitive data...");
+            await Task.Delay(300);
+
+            _logger.LogInformation("📁 Step 2: Encrypting document...");
+            await Task.Delay(500);
+
+            _logger.LogInformation("📁 Step 3: Moving to archive...");
+            await documentStream.CopyToAsync(archiveStream);
+            await Task.Delay(200);
+
+            _logger.LogInformation($"✅ Document {name} archived successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"❌ Failed to archive document: {name}");
+            throw;
+        }
+    }
+}

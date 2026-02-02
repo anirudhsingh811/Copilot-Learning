@@ -1,0 +1,46 @@
+# ============================================
+# Azure App Service - App Settings Configuration
+# ============================================
+
+$resourceGroup="myResourceGroup"
+$webAppName="myuniquewebapp"
+
+# 1. Set Application Settings
+az webapp config appsettings set `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --settings `
+    CUSTOM_SETTING="MyValue" `
+    ENVIRONMENT="Production" `
+    API_KEY="your-api-key-here"
+
+# 2. List all Application Settings
+az webapp config appsettings list `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --output table
+
+# 3. Delete an Application Setting
+az webapp config appsettings delete `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --setting-names CUSTOM_SETTING
+
+# 4. Set Connection String
+az webapp config connection-string set `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --connection-string-type SQLAzure `
+  --settings DefaultConnection="Server=tcp:myserver.database.windows.net;Database=mydb;"
+
+# 5. Configure Custom Domain
+az webapp config hostname add `
+  --webapp-name $webAppName `
+  --resource-group $resourceGroup `
+  --hostname "www.contoso.com"
+
+# 6. Enable HTTPS Only
+az webapp update `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --https-only true

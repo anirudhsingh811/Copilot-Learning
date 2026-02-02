@@ -1,0 +1,189 @@
+﻿using Azure.Core;
+using Azure.Identity;
+using Azure.ResourceManager;
+using Azure.ResourceManager.ContainerService;
+using Azure.ResourceManager.ContainerService.Models;
+using Azure.ResourceManager.Models;
+using Azure.ResourceManager.Resources;
+using Microsoft.Extensions.Logging;
+
+namespace AZ204.AKS;
+
+/// <summary>
+/// Manager for Azure Kubernetes Service - Cluster Operations
+/// </summary>
+public class AksClusterManager
+{
+    private readonly ArmClient _armClient;
+    private readonly ILogger<AksClusterManager> _logger;
+
+    public AksClusterManager(ILogger<AksClusterManager> logger, TokenCredential? credential = null)
+    {
+        _logger = logger;
+        _armClient = new ArmClient(credential ?? new DefaultAzureCredential());
+    }
+
+    /// <summary>
+    /// Creates an AKS cluster with basic configuration
+    /// </summary>
+    public async Task<ContainerServiceManagedClusterResource> CreateAksClusterAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string clusterName,
+        string location = "eastus",
+        int nodeCount = 3,
+        string vmSize = "Standard_DS2_v2",
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Creating AKS cluster '{ClusterName}'", clusterName);
+
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+
+        // Create cluster data
+        var clusterData = new ContainerServiceManagedClusterData(new AzureLocation(location))
+        {
+            DnsPrefix = clusterName,
+            Identity = new ManagedServiceIdentity(ManagedServiceIdentityType.SystemAssigned),
+            NetworkProfile = new ContainerServiceNetworkProfile
+            {
+                NetworkPlugin = ContainerServiceNetworkPlugin.Azure,
+                ServiceCidr = "10.0.0.0/16",
+                DnsServiceIP = "10.0.0.10"
+            }
+        };
+
+        // Add default node pool
+        var agentPool = new ManagedClusterAgentPoolProfile("nodepool1")
+        {
+            VmSize = vmSize,
+            Count = nodeCount,
+            Mode = AgentPoolMode.System,
+            OSType = ContainerServiceOSType.Linux,
+            EnableAutoScaling = true,
+            MinCount = 1,
+            MaxCount = 5
+        };
+        clusterData.AgentPoolProfiles.Add(agentPool);
+
+        var clusterCollection = resourceGroup.Value.GetContainerServiceManagedClusters();
+        var result = await clusterCollection.CreateOrUpdateAsync(
+            Azure.WaitUntil.Completed,
+            clusterName,
+            clusterData,
+            cancellationToken);
+
+        _logger.LogInformation("Successfully created AKS cluster");
+        return result.Value;
+    }
+
+    /// <summary>
+    /// Gets AKS cluster details
+    /// </summary>
+    public async Task<ContainerServiceManagedClusterResource> GetAksClusterAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string clusterName,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+        var cluster = await resourceGroup.Value.GetContainerServiceManagedClusterAsync(clusterName, cancellationToken);
+
+        return cluster.Value;
+    }
+
+    /// <summary>
+    /// Lists all AKS clusters in a resource group
+    /// </summary>
+    public async Task<List<ContainerServiceManagedClusterResource>> ListAksClustersAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+        var clusters = new List<ContainerServiceManagedClusterResource>();
+
+        await foreach (var cluster in resourceGroup.Value.GetContainerServiceManagedClusters().GetAllAsync(cancellationToken))
+        {
+            clusters.Add(cluster);
+        }
+
+        return clusters;
+    }
+
+    /// <summary>
+    /// Scales an AKS node pool
+    /// </summary>
+    public async Task ScaleNodePoolAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string clusterName,
+        string nodePoolName,
+        int newNodeCount,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Scaling node pool '{NodePool}' to {Count} nodes", nodePoolName, newNodeCount);
+
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+        var cluster = await resourceGroup.Value.GetContainerServiceManagedClusterAsync(clusterName, cancellationToken);
+
+        var agentPool = await cluster.Value.GetContainerServiceAgentPoolAsync(nodePoolName, cancellationToken);
+        
+        var agentPoolData = agentPool.Value.Data;
+        agentPoolData.Count = newNodeCount;
+
+        await agentPool.Value.UpdateAsync(Azure.WaitUntil.Completed, agentPoolData, cancellationToken);
+        _logger.LogInformation("Successfully scaled node pool");
+    }
+
+    /// <summary>
+    /// Deletes an AKS cluster
+    /// </summary>
+    public async Task DeleteAksClusterAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string clusterName,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Deleting AKS cluster '{ClusterName}'", clusterName);
+
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+        var cluster = await resourceGroup.Value.GetContainerServiceManagedClusterAsync(clusterName, cancellationToken);
+
+        await cluster.Value.DeleteAsync(Azure.WaitUntil.Completed, cancellationToken);
+        _logger.LogInformation("Successfully deleted AKS cluster");
+    }
+
+    /// <summary>
+    /// Gets cluster credentials for kubectl access
+    /// </summary>
+    public async Task<byte[]> GetClusterCredentialsAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string clusterName,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = _armClient.GetSubscriptionResource(
+            new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+        var cluster = await resourceGroup.Value.GetContainerServiceManagedClusterAsync(clusterName, cancellationToken);
+
+        var creds = await cluster.Value.GetClusterAdminCredentialsAsync(cancellationToken: cancellationToken);
+        return creds.Value.Kubeconfigs.First().Value.ToArray();
+    }
+}

@@ -1,0 +1,176 @@
+﻿// ============================================
+// Azure App Service Management Demo Program
+// ============================================
+// NOTE: This is an EXAMPLE/REFERENCE file showing how to use Azure App Service SDK
+// To run this code:
+// 1. Copy this code to a new project or Program.cs
+// 2. Include the working 7-WebApp.cs implementation
+// 3. Install packages: Azure.Identity, Azure.ResourceManager, Azure.ResourceManager.AppService
+// 4. Update your subscription ID below
+// 5. Ensure you're authenticated (az login or DefaultAzureCredential)
+// ============================================
+
+using System;
+using System.Threading.Tasks;
+
+namespace AzureAppServiceExamples
+{
+    public class ProgramExample
+    {
+        // NOTE: Main method is commented out as this is a reference file
+        // Uncomment and use in your own project
+
+        // static async Task Main(string[] args)
+
+        public static void MainRun(string[] args)
+        {
+            Console.WriteLine("╔════════════════════════════════════════════════════════════════╗");
+            Console.WriteLine("║   Azure App Service Management Demo                           ║");
+            Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
+            Console.WriteLine();
+            
+            Console.WriteLine("⚠️  IMPORTANT: This is a demo/example file.");
+            Console.WriteLine();
+            Console.WriteLine("To run this demo, you need to:");
+            Console.WriteLine("  1. Have an Azure subscription");
+            Console.WriteLine("  2. Be authenticated (run: az login)");
+            Console.WriteLine("  3. Update the subscriptionId below");
+            Console.WriteLine("  4. Have permissions to create resources");
+            Console.WriteLine("  5. Have a resource group created");
+            Console.WriteLine();
+            Console.WriteLine("════════════════════════════════════════════════════════════════");
+            Console.WriteLine();
+
+            // ========================================
+            // Configuration - UPDATE THESE VALUES
+            // ========================================
+            string subscriptionId = "c01b8f09-10c7-4d70-b719-05b1b231f9d3";
+            string resourceGroupName = "MyRGname";  // Must exist!
+            string location = "eastus";
+            string appServicePlanName = "myAppServicePlan";
+            string webAppName = $"mywebapp{Guid.NewGuid().ToString().Substring(0, 8)}";
+
+            // Validate configuration
+            if (subscriptionId == "your-subscription-id-here")
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("❌ ERROR: Please update the subscriptionId in the code!");
+                Console.ResetColor();
+                Console.WriteLine();
+                Console.WriteLine("To get your subscription ID, run:");
+                Console.WriteLine("   az account show --query id --output tsv");
+                Console.WriteLine();
+                return;
+            }
+
+            // NOTE: The AppServiceManager class needs to be properly implemented
+            // with Azure SDK. See 7-WebApp.cs for reference (note: it has API compatibility issues)
+            
+            Console.WriteLine("Demo would perform the following operations:");
+            Console.WriteLine();
+            Console.WriteLine("✓ 1. Create App Service Plan");
+            Console.WriteLine("✓ 2. Create Web App");
+            Console.WriteLine("✓ 3. Configure App Settings");
+            Console.WriteLine("✓ 4. Enable Managed Identity");
+            Console.WriteLine("✓ 5. Scale App Service Plan");
+            Console.WriteLine("✓ 6. Create Deployment Slot (staging)");
+            Console.WriteLine("✓ 7. Get Web App Metrics");
+            Console.WriteLine("✓ 8. Swap Deployment Slots");
+            Console.WriteLine();
+            
+            // Uncomment below to run actual Azure operations
+            // WARNING: This will create actual Azure resources and may incur costs!
+            
+            /*
+            var manager = new AppServiceManager(subscriptionId);
+
+            try
+            {
+                Console.WriteLine("🚀 Starting Azure Operations...");
+                Console.WriteLine();
+
+                // 1. Create Web App
+                Console.WriteLine("1️⃣  Creating Web App...");
+                await manager.CreateWebAppAsync(
+                    resourceGroupName,
+                    appServicePlanName,
+                    webAppName,
+                    location
+                );
+
+                // 2. Configure App Settings
+                Console.WriteLine("\n2️⃣  Configuring App Settings...");
+                await manager.ConfigureAppSettingsAsync(
+                    resourceGroupName,
+                    webAppName
+                );
+
+                // 3. Enable Managed Identity
+                Console.WriteLine("\n3️⃣  Enabling Managed Identity...");
+                await manager.EnableManagedIdentityAsync(
+                    resourceGroupName,
+                    webAppName
+                );
+
+                // 4. Scale App Service Plan
+                Console.WriteLine("\n4️⃣  Scaling App Service Plan...");
+                await manager.ScaleAppServicePlanAsync(
+                    resourceGroupName,
+                    appServicePlanName,
+                    "S1",
+                    2
+                );
+
+                // 5. Create Deployment Slot
+                Console.WriteLine("\n5️⃣  Creating Deployment Slot...");
+                await manager.CreateDeploymentSlotAsync(
+                    resourceGroupName,
+                    webAppName,
+                    "staging"
+                );
+
+                // 6. Get Web App Metrics
+                Console.WriteLine("\n6️⃣  Getting Web App Metrics...");
+                await manager.GetWebAppMetricsAsync(
+                    resourceGroupName,
+                    webAppName
+                );
+
+                // 7. Swap Slots (use with caution in production!)
+                // Console.WriteLine("\n7️⃣  Swapping Deployment Slots...");
+                // await manager.SwapDeploymentSlotsAsync(
+                //     resourceGroupName,
+                //     webAppName,
+                //     "staging",
+                //     "production"
+                // );
+
+                Console.WriteLine("\n✅ All operations completed successfully!");
+                Console.WriteLine($"\n🌐 Your web app is available at:");
+                Console.WriteLine($"   https://{webAppName}.azurewebsites.net");
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"\n❌ Error: {ex.Message}");
+                Console.ResetColor();
+                Console.WriteLine($"\nDetails: {ex}");
+            }
+            */
+
+            Console.WriteLine();
+            Console.WriteLine("════════════════════════════════════════════════════════════════");
+            Console.WriteLine();
+            Console.WriteLine("📚 For working examples, use Azure CLI scripts:");
+            Console.WriteLine("   • 1-CreateAppService.azcli - Create App Service");
+            Console.WriteLine("   • 2-AppSettings.azcli - Configure settings");
+            Console.WriteLine("   • 3-Authentication.azcli - Setup auth");
+            Console.WriteLine("   • 4-Scaling.azcli - Scale apps");
+            Console.WriteLine("   • 5-DeploymentSlots.azcli - Deployment slots");
+            Console.WriteLine();
+            Console.WriteLine("💡 These CLI scripts are ready to use immediately!");
+            Console.WriteLine();
+        }
+    }
+}
+

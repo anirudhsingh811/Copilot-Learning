@@ -1,0 +1,193 @@
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+
+namespace AZ204.RealFunctions;
+
+/// <summary>
+/// Real Timer Triggered Azure Functions
+/// Uses CRON expressions for scheduling
+/// </summary>
+public class TimerTriggerFunctions
+{
+    private readonly ILogger<TimerTriggerFunctions> _logger;
+
+    public TimerTriggerFunctions(ILogger<TimerTriggerFunctions> logger)
+    {
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Runs daily at 2 AM UTC (CRON: 0 0 2 * * *)
+    /// Performs database cleanup operations
+    /// </summary>
+    [Function("DailyCleanupJob")]
+    public async Task DailyCleanup(
+        [TimerTrigger("0 0 2 * * *")] TimerInfo timerInfo)
+    {
+        _logger.LogInformation($"Daily cleanup job started at: {DateTime.UtcNow}");
+        _logger.LogInformation($"Next execution: {timerInfo.ScheduleStatus?.Next}");
+        _logger.LogInformation($"Last execution: {timerInfo.ScheduleStatus?.Last}");
+
+        try
+        {
+            // Simulate cleanup tasks
+            _logger.LogInformation("???  Step 1: Deleting expired sessions...");
+            await Task.Delay(1000);
+            _logger.LogInformation("   ? Deleted 42 expired sessions");
+
+            _logger.LogInformation("???  Step 2: Archiving old logs...");
+            await Task.Delay(1000);
+            _logger.LogInformation("   ? Archived 1,234 log entries");
+
+            _logger.LogInformation("???  Step 3: Cleaning up temporary files...");
+            await Task.Delay(1000);
+            _logger.LogInformation("   ? Removed 567 MB of temp files");
+
+            _logger.LogInformation("???  Step 4: Optimizing database indexes...");
+            await Task.Delay(1000);
+            _logger.LogInformation("   ? Rebuilt 15 indexes");
+
+            _logger.LogInformation($"? Daily cleanup completed successfully at: {DateTime.UtcNow}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "? Daily cleanup failed");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Runs every hour (CRON: 0 0 * * * *)
+    /// Performs health checks on critical services
+    /// </summary>
+    [Function("HourlyHealthCheck")]
+    public async Task HourlyHealthCheck(
+        [TimerTrigger("0 0 * * * *")] TimerInfo timerInfo)
+    {
+        _logger.LogInformation($"Health check started at: {DateTime.UtcNow}");
+
+        try
+        {
+            var results = new List<string>();
+
+            // Check database
+            _logger.LogInformation("?? Checking database connection...");
+            await Task.Delay(200);
+            var dbHealthy = true;
+            results.Add($"Database: {(dbHealthy ? "? Healthy" : "? Unhealthy")} (Response: 145ms)");
+
+            // Check Redis cache
+            _logger.LogInformation("?? Checking Redis cache...");
+            await Task.Delay(100);
+            var cacheHealthy = true;
+            results.Add($"Redis Cache: {(cacheHealthy ? "? Healthy" : "? Unhealthy")} (Response: 23ms)");
+
+            // Check external API
+            _logger.LogInformation("?? Checking external API...");
+            await Task.Delay(300);
+            var apiHealthy = true;
+            results.Add($"External API: {(apiHealthy ? "? Healthy" : "? Unhealthy")} (Response: 312ms)");
+
+            // Check storage account
+            _logger.LogInformation("?? Checking Azure Storage...");
+            await Task.Delay(150);
+            var storageHealthy = true;
+            results.Add($"Storage: {(storageHealthy ? "? Healthy" : "? Unhealthy")} (Response: 89ms)");
+
+            // Log results
+            _logger.LogInformation("?? Health Check Results:");
+            foreach (var result in results)
+            {
+                _logger.LogInformation($"   {result}");
+            }
+
+            var allHealthy = dbHealthy && cacheHealthy && apiHealthy && storageHealthy;
+            if (!allHealthy)
+            {
+                _logger.LogWarning("??  Some services are unhealthy - sending alerts");
+                // In real implementation: Send to Application Insights, PagerDuty, etc.
+            }
+            else
+            {
+                _logger.LogInformation("? All services are healthy");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "? Health check failed");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Runs every 5 minutes (CRON: 0 */5 * * * *)
+    /// Processes pending notifications
+    /// </summary>
+    [Function("ProcessPendingNotifications")]
+    public async Task ProcessNotifications(
+        [TimerTrigger("0 */5 * * * *")] TimerInfo timerInfo)
+    {
+        _logger.LogInformation($"Processing pending notifications at: {DateTime.UtcNow}");
+
+        try
+        {
+            // In real app: Query database for pending notifications and send to queue
+            var pendingCount = new Random().Next(0, 10);
+            
+            _logger.LogInformation($"?? Found {pendingCount} pending notifications");
+            _logger.LogInformation($"? Would queue {pendingCount} notifications for processing");
+            
+            // Note: In production, you'd use a QueueClient to send messages
+            // or return them from the function with [QueueOutput]
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "? Failed to process notifications");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Runs on weekdays at 9 AM (CRON: 0 0 9 * * 1-5)
+    /// Generates daily reports
+    /// </summary>
+    [Function("GenerateDailyReports")]
+    public async Task GenerateDailyReports(
+        [TimerTrigger("0 0 9 * * 1-5")] TimerInfo timerInfo)
+    {
+        _logger.LogInformation($"Generating daily reports at: {DateTime.UtcNow}");
+
+        try
+        {
+            _logger.LogInformation("?? Step 1: Collecting data from last 24 hours...");
+            await Task.Delay(1000);
+
+            var stats = new
+            {
+                TotalOrders = 1234,
+                TotalRevenue = 45678.90m,
+                NewCustomers = 89,
+                AverageOrderValue = 37.02m
+            };
+
+            _logger.LogInformation("?? Step 2: Generating report...");
+            await Task.Delay(500);
+
+            _logger.LogInformation("?? Daily Report:");
+            _logger.LogInformation($"   ?? Total Orders: {stats.TotalOrders}");
+            _logger.LogInformation($"   ?? Total Revenue: ${stats.TotalRevenue:N2}");
+            _logger.LogInformation($"   ?? New Customers: {stats.NewCustomers}");
+            _logger.LogInformation($"   ?? Average Order Value: ${stats.AverageOrderValue:N2}");
+
+            _logger.LogInformation("?? Step 3: Sending report to stakeholders...");
+            await Task.Delay(500);
+
+            _logger.LogInformation("? Daily report generated and sent successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "? Failed to generate daily report");
+            throw;
+        }
+    }
+}

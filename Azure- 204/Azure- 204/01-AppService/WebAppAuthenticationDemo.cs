@@ -1,0 +1,1017 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
+
+namespace AZ204.AppService;
+
+/// <summary>
+/// Demo: Azure Web App Authentication and Identity Providers
+/// Complete guide for configuring authentication and authorization
+/// Perfect for AZ-204 Exam Preparation
+/// Compatible with .NET 8 and .NET 9
+/// </summary>
+public static class WebAppAuthenticationDemo
+{
+    /// <summary>
+    /// Overview of Azure App Service Authentication
+    /// </summary>
+    public static async Task ShowAuthenticationOverview()
+    {
+        Console.WriteLine("\n??????????????????????????????????????????????????????????");
+        Console.WriteLine("?   AZURE WEB APP AUTHENTICATION & AUTHORIZATION         ?");
+        Console.WriteLine("?   Built-in Identity Provider Integration              ?");
+        Console.WriteLine("??????????????????????????????????????????????????????????\n");
+
+        await Task.Delay(500);
+
+        Console.WriteLine("?? What is App Service Authentication?\n");
+        Console.WriteLine("   Also known as 'Easy Auth' - Built-in authentication feature");
+        Console.WriteLine("   • No code changes required in your app");
+        Console.WriteLine("   • Handles authentication before request reaches your app");
+        Console.WriteLine("   • Supports multiple identity providers");
+        Console.WriteLine("   • Manages tokens and user sessions");
+        Console.WriteLine("   • Available on all App Service tiers (including Free!)\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Key Benefits:\n");
+        Console.WriteLine("   ? Zero-code authentication");
+        Console.WriteLine("   ? Multiple identity providers");
+        Console.WriteLine("   ? Token management handled by Azure");
+        Console.WriteLine("   ? User identity accessible in headers");
+        Console.WriteLine("   ? Works with any language/framework");
+        Console.WriteLine("   ? Integrates with Azure AD for enterprise apps\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Supported Identity Providers:\n");
+        Console.WriteLine("   ??????????????????????????????????????????????????????");
+        Console.WriteLine("   ? Provider              Use Case               ?    ?");
+        Console.WriteLine("   ? ???????????????????????????????????????????????? ?");
+        Console.WriteLine("   ? Microsoft Entra ID    Enterprise/B2B/B2C    ??? ?");
+        Console.WriteLine("   ? (Azure AD)            • Work/School accounts      ?");
+        Console.WriteLine("   ?                       • Multi-tenant              ?");
+        Console.WriteLine("   ?                       • RBAC integration          ?");
+        Console.WriteLine("   ?                                                    ?");
+        Console.WriteLine("   ? Microsoft Account     Consumer apps          ??  ?");
+        Console.WriteLine("   ?                       • Personal Microsoft account?");
+        Console.WriteLine("   ?                       • Xbox, Outlook, etc.       ?");
+        Console.WriteLine("   ?                                                    ?");
+        Console.WriteLine("   ? Google                Social login           ??  ?");
+        Console.WriteLine("   ?                       • Gmail accounts            ?");
+        Console.WriteLine("   ?                                                    ?");
+        Console.WriteLine("   ? Facebook              Social login           ?    ?");
+        Console.WriteLine("   ?                       • Facebook accounts         ?");
+        Console.WriteLine("   ?                                                    ?");
+        Console.WriteLine("   ? Twitter               Social login           ?    ?");
+        Console.WriteLine("   ?                       • Twitter accounts          ?");
+        Console.WriteLine("   ?                                                    ?");
+        Console.WriteLine("   ? GitHub                Developer apps         ?    ?");
+        Console.WriteLine("   ?                       • GitHub accounts           ?");
+        Console.WriteLine("   ?                                                    ?");
+        Console.WriteLine("   ? Apple                 iOS apps                ?    ?");
+        Console.WriteLine("   ?                       • Apple ID                  ?");
+        Console.WriteLine("   ?                                                    ?");
+        Console.WriteLine("   ? OpenID Connect        Custom provider        ??  ?");
+        Console.WriteLine("   ?                       • Any OIDC provider         ?");
+        Console.WriteLine("   ??????????????????????????????????????????????????????\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Authentication Flow:\n");
+        Console.WriteLine("   ???????????????????????????????????????????????????");
+        Console.WriteLine("   ?  1. User accesses app                           ?");
+        Console.WriteLine("   ?     ?                                            ?");
+        Console.WriteLine("   ?  2. App Service checks authentication           ?");
+        Console.WriteLine("   ?     ?                                            ?");
+        Console.WriteLine("   ?  3. Not authenticated ? Redirect to provider    ?");
+        Console.WriteLine("   ?     ?                                            ?");
+        Console.WriteLine("   ?  4. User signs in at provider (Azure AD, etc.)  ?");
+        Console.WriteLine("   ?     ?                                            ?");
+        Console.WriteLine("   ?  5. Provider redirects back with token          ?");
+        Console.WriteLine("   ?     ?                                            ?");
+        Console.WriteLine("   ?  6. App Service validates token                 ?");
+        Console.WriteLine("   ?     ?                                            ?");
+        Console.WriteLine("   ?  7. App Service stores token in session         ?");
+        Console.WriteLine("   ?     ?                                            ?");
+        Console.WriteLine("   ?  8. Request forwarded to your app               ?");
+        Console.WriteLine("   ?     ?                                            ?");
+        Console.WriteLine("   ?  9. Your app accesses user info via headers     ?");
+        Console.WriteLine("   ???????????????????????????????????????????????????\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? AZ-204 Exam Focus:");
+        Console.WriteLine("   ? Microsoft Entra ID (Azure AD) integration");
+        Console.WriteLine("   ? Authentication vs Authorization");
+        Console.WriteLine("   ? Token management and refresh");
+        Console.WriteLine("   ? User claims and roles");
+        Console.WriteLine("   ? API authentication scenarios\n");
+    }
+
+    /// <summary>
+    /// Demo 1: Enable Authentication - Azure Portal
+    /// </summary>
+    public static async Task Demo1_EnableAuthentication()
+    {
+        Console.WriteLine("\n??????????????????????????????????????????????????????????");
+        Console.WriteLine("?   DEMO 1: ENABLE AUTHENTICATION (AZURE PORTAL)         ?");
+        Console.WriteLine("??????????????????????????????????????????????????????????\n");
+
+        await Task.Delay(500);
+
+        Console.WriteLine("?? STEP 1: Navigate to Authentication\n");
+        Console.WriteLine("   Azure Portal Path:");
+        Console.WriteLine("   Your Web App ? Settings ? Authentication\n");
+
+        Console.WriteLine("   Initial State (before configuration):");
+        Console.WriteLine("   ????????????????????????????????????????????????????");
+        Console.WriteLine("   ?  Authentication                                  ?");
+        Console.WriteLine("   ?  ???????????????????????????????????????????????");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  ??  App Service authentication is OFF           ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Enable authentication to secure your app with   ?");
+        Console.WriteLine("   ?  identity providers like Microsoft, Google, etc. ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  [Add identity provider]                         ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ????????????????????????????????????????????????????\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? STEP 2: Add Identity Provider\n");
+        Console.WriteLine("   Click [Add identity provider]\n");
+
+        Console.WriteLine("   ???????????????????????????????????????????????????");
+        Console.WriteLine("   ?  Add an identity provider                       ?");
+        Console.WriteLine("   ?  ??????????????????????????????????????????????  ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Identity provider: [Select provider ?]         ?");
+        Console.WriteLine("   ?  ?????????????????????????????????????????????  ?");
+        Console.WriteLine("   ?  ? Microsoft                                 ?  ?");
+        Console.WriteLine("   ?  ? Google                                    ?  ?");
+        Console.WriteLine("   ?  ? Facebook                                  ?  ?");
+        Console.WriteLine("   ?  ? Twitter                                   ?  ?");
+        Console.WriteLine("   ?  ? Apple                                     ?  ?");
+        Console.WriteLine("   ?  ? GitHub                                    ?  ?");
+        Console.WriteLine("   ?  ? OpenID Connect                            ?  ?");
+        Console.WriteLine("   ?  ?????????????????????????????????????????????  ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  ? Most common for AZ-204: Microsoft           ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ???????????????????????????????????????????????????\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Quick Decision Guide:\n");
+        Console.WriteLine("   Choose Microsoft when:");
+        Console.WriteLine("   • Enterprise application (work/school accounts)");
+        Console.WriteLine("   • Need Azure AD integration");
+        Console.WriteLine("   • Require role-based access (RBAC)");
+        Console.WriteLine("   • Multi-tenant scenarios");
+        Console.WriteLine("   • Most common for AZ-204 exam scenarios\n");
+
+        Console.WriteLine("   Choose Google/Facebook when:");
+        Console.WriteLine("   • Consumer-facing application");
+        Console.WriteLine("   • Need social login");
+        Console.WriteLine("   • Public web app\n");
+
+        Console.WriteLine("   Choose OpenID Connect when:");
+        Console.WriteLine("   • Custom identity provider");
+        Console.WriteLine("   • On-premises identity server");
+        Console.WriteLine("   • Third-party OAuth provider\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? STEP 3: Configure Authentication Settings\n");
+        Console.WriteLine("   After selecting provider, configure these settings:\n");
+
+        Console.WriteLine("   ???????????????????????????????????????????????????");
+        Console.WriteLine("   ?  Authentication settings                        ?");
+        Console.WriteLine("   ?  ??????????????????????????????????????????????  ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Unauthenticated requests:                       ?");
+        Console.WriteLine("   ?  ? Require authentication                        ?");
+        Console.WriteLine("   ?    Return HTTP 401/302 redirect                 ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  ? Allow unauthenticated requests                ?");
+        Console.WriteLine("   ?    Pass through to application                  ?");
+        Console.WriteLine("   ?    (App handles authentication)                 ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Token store: ? Enabled                          ?");
+        Console.WriteLine("   ?  (Store tokens for later use)                   ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Allowed external redirect URLs:                 ?");
+        Console.WriteLine("   ?  ?????????????????????????????????????????????  ?");
+        Console.WriteLine("   ?  ? https://myapp.com/callback                ?  ?");
+        Console.WriteLine("   ?  ?????????????????????????????????????????????  ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ???????????????????????????????????????????????????\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Understanding Authentication Options:\n");
+
+        Console.WriteLine("   Option 1: Require Authentication (Recommended)");
+        Console.WriteLine("   ??????????????????????????????????????????????");
+        Console.WriteLine("   • Blocks all unauthenticated requests");
+        Console.WriteLine("   • Automatically redirects to login page");
+        Console.WriteLine("   • Returns 302 redirect for browser requests");
+        Console.WriteLine("   • Returns 401 Unauthorized for API requests");
+        Console.WriteLine("   • Best for: Private apps, internal tools\n");
+
+        Console.WriteLine("   Option 2: Allow Unauthenticated Requests");
+        Console.WriteLine("   ??????????????????????????????????????????????");
+        Console.WriteLine("   • Allows anonymous access");
+        Console.WriteLine("   • Your app code decides what requires auth");
+        Console.WriteLine("   • Use [Authorize] attributes in .NET");
+        Console.WriteLine("   • Best for: Mixed content (public + private pages)\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? STEP 4: Test Authentication\n");
+        Console.WriteLine("   After saving configuration:\n");
+
+        Console.WriteLine("   1. Open your app URL in private/incognito browser");
+        Console.WriteLine("   2. You'll be redirected to sign-in page");
+        Console.WriteLine("   3. Sign in with the configured provider");
+        Console.WriteLine("   4. After authentication, redirected back to your app");
+        Console.WriteLine("   5. Subsequent requests are authenticated automatically\n");
+
+        Console.WriteLine("   Test URLs:");
+        Console.WriteLine("   • App: https://mywebapp.azurewebsites.net/");
+        Console.WriteLine("   • Login: https://mywebapp.azurewebsites.net/.auth/login/aad");
+        Console.WriteLine("   • Logout: https://mywebapp.azurewebsites.net/.auth/logout");
+        Console.WriteLine("   • Me: https://mywebapp.azurewebsites.net/.auth/me (user info)\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Verify Authentication is Working:\n");
+        Console.WriteLine("   ???????????????????????????????????????????????????");
+        Console.WriteLine("   ?  Browser: https://mywebapp.azurewebsites.net   ?");
+        Console.WriteLine("   ?  ????????????????????????????????????????????? ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  302 Redirect to:                                ?");
+        Console.WriteLine("   ?  https://login.microsoftonline.com/...           ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  ?????????????????????????????????????????????? ?");
+        Console.WriteLine("   ?  ?  Sign in                                   ? ?");
+        Console.WriteLine("   ?  ?  Email: user@contoso.com                   ? ?");
+        Console.WriteLine("   ?  ?  Password: ••••••••                        ? ?");
+        Console.WriteLine("   ?  ?  [Sign in]                                 ? ?");
+        Console.WriteLine("   ?  ?????????????????????????????????????????????? ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  After sign-in ? Redirected back to app          ?");
+        Console.WriteLine("   ?  ? Authenticated!                               ?");
+        Console.WriteLine("   ???????????????????????????????????????????????????\n");
+
+        Console.WriteLine("?? Pro Tips:");
+        Console.WriteLine("   ? Test in incognito/private mode to avoid cached sessions");
+        Console.WriteLine("   ? Use /.auth/me endpoint to see user claims");
+        Console.WriteLine("   ? Check browser network tab for redirect flow");
+        Console.WriteLine("   ? Logout URL clears authentication cookies\n");
+
+        Console.WriteLine("?? AZ-204 Exam Scenario:");
+        Console.WriteLine("   Q: 'Secure web app so only authenticated users can access'");
+        Console.WriteLine("   A: 1. Go to Authentication settings");
+        Console.WriteLine("      2. Add identity provider (Microsoft)");
+        Console.WriteLine("      3. Select 'Require authentication'");
+        Console.WriteLine("      4. Save configuration\n");
+    }
+
+    /// <summary>
+    /// Demo 2: Configure Microsoft Entra ID (Azure AD)
+    /// </summary>
+    public static async Task Demo2_ConfigureMicrosoftEntraID()
+    {
+        Console.WriteLine("\n??????????????????????????????????????????????????????????");
+        Console.WriteLine("?   DEMO 2: MICROSOFT ENTRA ID (AZURE AD) CONFIGURATION  ?");
+        Console.WriteLine("??????????????????????????????????????????????????????????\n");
+
+        await Task.Delay(500);
+
+        Console.WriteLine("?? Microsoft Entra ID Overview:\n");
+        Console.WriteLine("   Formerly known as Azure Active Directory (Azure AD)");
+        Console.WriteLine("   • Enterprise identity platform");
+        Console.WriteLine("   • Work or school accounts");
+        Console.WriteLine("   • Single sign-on (SSO)");
+        Console.WriteLine("   • Multi-tenant support");
+        Console.WriteLine("   • Role-based access control\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? STEP 1: Add Microsoft Identity Provider\n");
+        Console.WriteLine("   Authentication ? Add identity provider ? Microsoft\n");
+
+        Console.WriteLine("   ???????????????????????????????????????????????????");
+        Console.WriteLine("   ?  Add an identity provider                       ?");
+        Console.WriteLine("   ?  ??????????????????????????????????????????????  ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Identity provider: Microsoft                    ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  App registration type:                          ?");
+        Console.WriteLine("   ?  ? Create new registration (Recommended)         ?");
+        Console.WriteLine("   ?    Azure creates app registration for you       ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  ? Provide existing app registration details    ?");
+        Console.WriteLine("   ?    Use existing Azure AD app                    ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Name: [mywebapp-auth]                           ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Supported account types:                        ?");
+        Console.WriteLine("   ?  ? Current tenant only (Single tenant)           ?");
+        Console.WriteLine("   ?    Only users in this directory                 ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  ? Any Azure AD directory (Multi-tenant)         ?");
+        Console.WriteLine("   ?    Users from any organization                  ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  ? Any Azure AD + Personal Microsoft accounts    ?");
+        Console.WriteLine("   ?    Work/School + Outlook.com, Xbox, etc.        ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Issuer URL: (Auto-filled)                       ?");
+        Console.WriteLine("   ?  https://sts.windows.net/{tenant-id}/            ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?                    [Add]             [Cancel]    ?");
+        Console.WriteLine("   ???????????????????????????????????????????????????\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Understanding Account Types:\n");
+
+        Console.WriteLine("   Single Tenant (Most Common):");
+        Console.WriteLine("   ????????????????????????????????????????????????");
+        Console.WriteLine("   • Only users in your Azure AD tenant");
+        Console.WriteLine("   • Example: Internal company app");
+        Console.WriteLine("   • Highest security");
+        Console.WriteLine("   • Best for: LOB apps, internal tools\n");
+
+        Console.WriteLine("   Multi-Tenant:");
+        Console.WriteLine("   ????????????????????????????????????????????????");
+        Console.WriteLine("   • Users from any Azure AD organization");
+        Console.WriteLine("   • Example: SaaS app sold to multiple companies");
+        Console.WriteLine("   • Requires tenant consent");
+        Console.WriteLine("   • Best for: B2B scenarios, ISV applications\n");
+
+        Console.WriteLine("   Multi-Tenant + Personal Accounts:");
+        Console.WriteLine("   ????????????????????????????????????????????????");
+        Console.WriteLine("   • Work/School + Personal Microsoft accounts");
+        Console.WriteLine("   • Example: Consumer app with enterprise support");
+        Console.WriteLine("   • Widest audience");
+        Console.WriteLine("   • Best for: Hybrid consumer/enterprise apps\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? STEP 2: Configure API Permissions (Azure AD Portal)\n");
+        Console.WriteLine("   For accessing user data or calling Microsoft APIs:\n");
+
+        Console.WriteLine("   1. Azure Portal ? Azure Active Directory");
+        Console.WriteLine("   2. App registrations ? Find your app (mywebapp-auth)");
+        Console.WriteLine("   3. API permissions ? Add a permission\n");
+
+        Console.WriteLine("   Common Permissions:");
+        Console.WriteLine("   ???????????????????????????????????????????????????");
+        Console.WriteLine("   ?  API                  Permission          Type  ?");
+        Console.WriteLine("   ?  ????????????????????????????????????????????? ?");
+        Console.WriteLine("   ?  Microsoft Graph      User.Read           Del   ?");
+        Console.WriteLine("   ?                       (Read user profile)       ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Microsoft Graph      User.ReadBasic.All   Del   ?");
+        Console.WriteLine("   ?                       (Read all users)          ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Microsoft Graph      Mail.Read            Del   ?");
+        Console.WriteLine("   ?                       (Read user mail)          ?");
+        Console.WriteLine("   ?                                                  ?");
+        Console.WriteLine("   ?  Your API             access_as_user       Del   ?");
+        Console.WriteLine("   ?                       (Custom API scope)        ?");
+        Console.WriteLine("   ???????????????????????????????????????????????????");
+        Console.WriteLine("   Del = Delegated (on behalf of user)\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Access User Information in Your App:\n");
+
+        Console.WriteLine("   User claims are available in HTTP headers:\n");
+
+        Console.WriteLine("   C# (.NET 8/9):");
+        Console.WriteLine("   ??????????????????????????????????????????????");
+        Console.WriteLine("   // Get user identity from headers (Minimal API)");
+        Console.WriteLine("   app.MapGet(\"/user\", (HttpContext context) =>");
+        Console.WriteLine("   {");
+        Console.WriteLine("       var userId = context.Request.Headers[\"X-MS-CLIENT-PRINCIPAL-ID\"];");
+        Console.WriteLine("       var userName = context.Request.Headers[\"X-MS-CLIENT-PRINCIPAL-NAME\"];");
+        Console.WriteLine("       var userEmail = context.Request.Headers[\"X-MS-CLIENT-PRINCIPAL-EMAIL\"];");
+        Console.WriteLine("       ");
+        Console.WriteLine("       return Results.Ok(new { userId, userName, userEmail });");
+        Console.WriteLine("   });\n");
+
+        Console.WriteLine("   // Or parse the principal object");
+        Console.WriteLine("   app.MapGet(\"/claims\", (HttpContext context) =>");
+        Console.WriteLine("   {");
+        Console.WriteLine("       var principal = context.Request.Headers[\"X-MS-CLIENT-PRINCIPAL\"];");
+        Console.WriteLine("       var decoded = Convert.FromBase64String(principal!);");
+        Console.WriteLine("       var json = Encoding.UTF8.GetString(decoded);");
+        Console.WriteLine("       var user = JsonSerializer.Deserialize<ClaimsPrincipal>(json);");
+        Console.WriteLine("       ");
+        Console.WriteLine("       return Results.Ok(user);");
+        Console.WriteLine("   });\n");
+
+        Console.WriteLine("   // Controller-based approach");
+        Console.WriteLine("   [ApiController]");
+        Console.WriteLine("   [Route(\"api/[controller]\")]");
+        Console.WriteLine("   public class UserController(IHttpContextAccessor httpContextAccessor) : ControllerBase");
+        Console.WriteLine("   {");
+        Console.WriteLine("       [HttpGet]");
+        Console.WriteLine("       public IActionResult GetUser()");
+        Console.WriteLine("       {");
+        Console.WriteLine("           var context = httpContextAccessor.HttpContext;");
+        Console.WriteLine("           var userId = context?.Request.Headers[\"X-MS-CLIENT-PRINCIPAL-ID\"].ToString();");
+        Console.WriteLine("           ");
+        Console.WriteLine("           return Ok(new { userId });");
+        Console.WriteLine("       }");
+        Console.WriteLine("   }\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Best Practices:");
+        Console.WriteLine("   ? Use single tenant for internal apps");
+        Console.WriteLine("   ? Request minimum required permissions");
+        Console.WriteLine("   ? Monitor client secret expiration");
+        Console.WriteLine("   ? Use Managed Identity where possible");
+        Console.WriteLine("   ? Enable MFA for admin accounts");
+        Console.WriteLine("   ? Review sign-in logs regularly\n");
+
+        Console.WriteLine("?? AZ-204 Exam Scenario:");
+        Console.WriteLine("   Q: 'Internal company app needs Azure AD authentication'");
+        Console.WriteLine("   A: 1. Add Microsoft identity provider");
+        Console.WriteLine("      2. Create new app registration");
+        Console.WriteLine("      3. Select 'Current tenant only' (single tenant)");
+        Console.WriteLine("      4. Require authentication");
+        Console.WriteLine("      5. Users sign in with work accounts\n");
+    }
+
+    /// <summary>
+    /// Demo 3: Configure Social Identity Providers (Google, Facebook)
+    /// </summary>
+    public static async Task Demo3_SocialIdentityProviders()
+    {
+        Console.WriteLine("\n??????????????????????????????????????????????????????????");
+        Console.WriteLine("?   DEMO 3: SOCIAL IDENTITY PROVIDERS                    ?");
+        Console.WriteLine("??????????????????????????????????????????????????????????\n");
+
+        await Task.Delay(500);
+
+        Console.WriteLine("?? Social Login Overview:\n");
+        Console.WriteLine("   Enable users to sign in with social accounts:");
+        Console.WriteLine("   • Google (Gmail accounts)");
+        Console.WriteLine("   • Facebook");
+        Console.WriteLine("   • Twitter");
+        Console.WriteLine("   • GitHub");
+        Console.WriteLine("   • Apple ID\n");
+
+        Console.WriteLine("   Use Case: Consumer-facing applications\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("???????????????????????????????????????????????????????");
+        Console.WriteLine("GOOGLE AUTHENTICATION");
+        Console.WriteLine("???????????????????????????????????????????????????????\n");
+
+        Console.WriteLine("?? STEP 1: Create Google OAuth Client\n");
+        Console.WriteLine("   1. Go to: https://console.developers.google.com");
+        Console.WriteLine("   2. Create new project or select existing");
+        Console.WriteLine("   3. APIs & Services ? Credentials");
+        Console.WriteLine("   4. Create Credentials ? OAuth 2.0 Client ID\n");
+
+        Console.WriteLine("   Redirect URI format:");
+        Console.WriteLine("   https://<app-name>.azurewebsites.net/.auth/login/google/callback\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? STEP 2: Configure Google in Azure App Service\n");
+        Console.WriteLine("   Use Azure Portal or Configuration settings to add:");
+        Console.WriteLine("   • Client ID");
+        Console.WriteLine("   • Client Secret");
+        Console.WriteLine("   • Scopes: openid profile email\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Managing Client Secrets:\n");
+        Console.WriteLine("   ??  Store secrets securely:\n");
+
+        Console.WriteLine("   Option 1: Key Vault References (Recommended)");
+        Console.WriteLine("   ????????????????????????????????????????????????");
+        Console.WriteLine("   // appsettings.json");
+        Console.WriteLine("   {");
+        Console.WriteLine("     \"Authentication\": {");
+        Console.WriteLine("       \"Google\": {");
+        Console.WriteLine("         \"ClientId\": \"your-client-id\",");
+        Console.WriteLine("         \"ClientSecret\": \"@Microsoft.KeyVault(SecretUri=https://...)\"");
+        Console.WriteLine("       }");
+        Console.WriteLine("     }");
+        Console.WriteLine("   }\n");
+
+        Console.WriteLine("?? Best Practices:");
+        Console.WriteLine("   ? Use HTTPS for all redirect URIs");
+        Console.WriteLine("   ? Rotate client secrets regularly");
+        Console.WriteLine("   ? Request minimum necessary scopes");
+        Console.WriteLine("   ? Monitor authentication failures");
+        Console.WriteLine("   ? Test sign-in/sign-out flows");
+        Console.WriteLine("   ? Handle provider outages gracefully\n");
+
+        Console.WriteLine("?? Common Use Cases:");
+        Console.WriteLine("   • Microsoft ? Enterprise apps");
+        Console.WriteLine("   • Google ? Consumer web apps");
+        Console.WriteLine("   • Facebook ? Social media integrations");
+        Console.WriteLine("   • GitHub ? Developer tools");
+        Console.WriteLine("   • Apple ? iOS mobile apps\n");
+    }
+
+    /// <summary>
+    /// Demo 4: Access Tokens and API Authentication
+    /// </summary>
+    public static async Task Demo4_AccessTokensAndAPI()
+    {
+        Console.WriteLine("\n??????????????????????????????????????????????????????????");
+        Console.WriteLine("?   DEMO 4: ACCESS TOKENS & API AUTHENTICATION           ?");
+        Console.WriteLine("??????????????????????????????????????????????????????????\n");
+
+        await Task.Delay(500);
+
+        Console.WriteLine("?? Understanding Tokens:\n");
+        Console.WriteLine("   App Service Authentication provides three types of tokens:\n");
+
+        Console.WriteLine("   1. ID Token");
+        Console.WriteLine("      • Contains user identity information");
+        Console.WriteLine("      • Used for authentication");
+        Console.WriteLine("      • JWT format (JSON Web Token)\n");
+
+        Console.WriteLine("   2. Access Token");
+        Console.WriteLine("      • Used to call APIs on behalf of user");
+        Console.WriteLine("      • Scoped to specific resources");
+        Console.WriteLine("      • Short-lived (typically 1 hour)\n");
+
+        Console.WriteLine("   3. Refresh Token");
+        Console.WriteLine("      • Used to obtain new access tokens");
+        Console.WriteLine("      • Long-lived (days/months)");
+        Console.WriteLine("      • Stored securely by App Service\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? STEP 1: Retrieve Access Token in Your App\n");
+
+        Console.WriteLine("   Method 1: From HTTP Headers");
+        Console.WriteLine("   ??????????????????????????????????????????????");
+        Console.WriteLine("   // Minimal API (.NET 8/9)");
+        Console.WriteLine("   app.MapGet(\"/api/profile\", async (HttpContext context, IHttpClientFactory factory) =>");
+        Console.WriteLine("   {");
+        Console.WriteLine("       // Get access token from header");
+        Console.WriteLine("       var token = context.Request.Headers[\"X-MS-TOKEN-AAD-ACCESS-TOKEN\"].ToString();");
+        Console.WriteLine("       ");
+        Console.WriteLine("       if (string.IsNullOrEmpty(token))");
+        Console.WriteLine("           return Results.Unauthorized();");
+        Console.WriteLine("       ");
+        Console.WriteLine("       // Call Microsoft Graph");
+        Console.WriteLine("       var httpClient = factory.CreateClient();");
+        Console.WriteLine("       httpClient.DefaultRequestHeaders.Authorization =");
+        Console.WriteLine("           new AuthenticationHeaderValue(\"Bearer\", token);");
+        Console.WriteLine("       ");
+        Console.WriteLine("       var response = await httpClient.GetAsync(");
+        Console.WriteLine("           \"https://graph.microsoft.com/v1.0/me\");");
+        Console.WriteLine("       ");
+        Console.WriteLine("       if (response.IsSuccessStatusCode)");
+        Console.WriteLine("       {");
+        Console.WriteLine("           var user = await response.Content.ReadFromJsonAsync<UserProfile>();");
+        Console.WriteLine("           return Results.Ok(user);");
+        Console.WriteLine("       }");
+        Console.WriteLine("       ");
+        Console.WriteLine("       return Results.Problem();");
+        Console.WriteLine("   });\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("   Method 2: Using IHttpContextAccessor");
+        Console.WriteLine("   ??????????????????????????????????????????????");
+        Console.WriteLine("   // Register services (.NET 8/9)");
+        Console.WriteLine("   var builder = WebApplication.CreateBuilder(args);");
+        Console.WriteLine("   builder.Services.AddHttpContextAccessor();");
+        Console.WriteLine("   builder.Services.AddHttpClient();\n");
+
+        Console.WriteLine("   // Service class with primary constructor (.NET 8+)");
+        Console.WriteLine("   public class GraphService(IHttpContextAccessor contextAccessor, IHttpClientFactory factory)");
+        Console.WriteLine("   {");
+        Console.WriteLine("       public async Task<UserProfile?> GetUserProfile()");
+        Console.WriteLine("       {");
+        Console.WriteLine("           var context = contextAccessor.HttpContext;");
+        Console.WriteLine("           if (context is null) return null;");
+        Console.WriteLine("           ");
+        Console.WriteLine("           var token = context.Request.Headers[\"X-MS-TOKEN-AAD-ACCESS-TOKEN\"].ToString();");
+        Console.WriteLine("           if (string.IsNullOrEmpty(token)) return null;");
+        Console.WriteLine("           ");
+        Console.WriteLine("           var httpClient = factory.CreateClient();");
+        Console.WriteLine("           httpClient.DefaultRequestHeaders.Authorization =");
+        Console.WriteLine("               new AuthenticationHeaderValue(\"Bearer\", token);");
+        Console.WriteLine("           ");
+        Console.WriteLine("           var response = await httpClient.GetFromJsonAsync<UserProfile>(");
+        Console.WriteLine("               \"https://graph.microsoft.com/v1.0/me\");");
+        Console.WriteLine("           ");
+        Console.WriteLine("           return response;");
+        Console.WriteLine("       }");
+        Console.WriteLine("   }\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? STEP 2: Secure API Endpoints\n");
+
+        Console.WriteLine("   Using Minimal APIs (.NET 8/9):");
+        Console.WriteLine("   ??????????????????????????????????????????????");
+        Console.WriteLine("   var builder = WebApplication.CreateBuilder(args);");
+        Console.WriteLine("   ");
+        Console.WriteLine("   builder.Services.AddAuthentication()");
+        Console.WriteLine("       .AddJwtBearer();");
+        Console.WriteLine("   builder.Services.AddAuthorization();\n");
+
+        Console.WriteLine("   var app = builder.Build();");
+        Console.WriteLine("   ");
+        Console.WriteLine("   app.UseAuthentication();");
+        Console.WriteLine("   app.UseAuthorization();\n");
+
+        Console.WriteLine("   // Require authentication");
+        Console.WriteLine("   app.MapGet(\"/api/secure\", () => \"Secure data\")");
+        Console.WriteLine("       .RequireAuthorization();\n");
+
+        Console.WriteLine("   // Require specific role");
+        Console.WriteLine("   app.MapPost(\"/api/admin\", () => \"Admin action\")");
+        Console.WriteLine("       .RequireAuthorization(\"AdminPolicy\");\n");
+
+        Console.WriteLine("   app.Run();\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Best Practices:");
+        Console.WriteLine("   ? Always enable token store");
+        Console.WriteLine("   ? Use HTTPS for all API calls");
+        Console.WriteLine("   ? Validate tokens on backend");
+        Console.WriteLine("   ? Request minimum required scopes");
+        Console.WriteLine("   ? Handle token expiration gracefully");
+        Console.WriteLine("   ? Don't expose tokens in URLs or logs");
+        Console.WriteLine("   ? Use IHttpClientFactory for HttpClient instances\n");
+
+        Console.WriteLine("?? AZ-204 Exam Scenario:");
+        Console.WriteLine("   Q: 'Frontend needs to call backend API with user context'");
+        Console.WriteLine("   A: 1. Enable authentication on both apps");
+        Console.WriteLine("      2. Enable token store");
+        Console.WriteLine("      3. Frontend gets access token from headers");
+        Console.WriteLine("      4. Frontend passes token in Authorization header");
+        Console.WriteLine("      5. Backend validates token (audience, issuer)\n");
+    }
+
+    /// <summary>
+    /// Demo 5: Authorization and Role-Based Access Control
+    /// </summary>
+    public static async Task Demo5_AuthorizationAndRBAC()
+    {
+        Console.WriteLine("\n??????????????????????????????????????????????????????????");
+        Console.WriteLine("?   DEMO 5: AUTHORIZATION & ROLE-BASED ACCESS CONTROL    ?");
+        Console.WriteLine("??????????????????????????????????????????????????????????\n");
+
+        await Task.Delay(500);
+
+        Console.WriteLine("?? Authentication vs Authorization:\n");
+        Console.WriteLine("   ??????????????????????????????????????????????????????");
+        Console.WriteLine("   ? Authentication          Authorization              ?");
+        Console.WriteLine("   ? ???????????????????????????????????????????????? ?");
+        Console.WriteLine("   ? Who are you?            What can you do?           ?");
+        Console.WriteLine("   ? Identity verification   Permission checking        ?");
+        Console.WriteLine("   ? Login/Sign-in          Access control              ?");
+        Console.WriteLine("   ? Example: Username/Pwd   Example: Admin role        ?");
+        Console.WriteLine("   ??????????????????????????????????????????????????????\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? STEP 1: Configure Authorization (.NET 8/9)\n");
+
+        Console.WriteLine("   Using Minimal APIs:");
+        Console.WriteLine("   ??????????????????????????????????????????????");
+        Console.WriteLine("   var builder = WebApplication.CreateBuilder(args);\n");
+
+        Console.WriteLine("   // Add authorization with policies");
+        Console.WriteLine("   builder.Services.AddAuthorization(options =>");
+        Console.WriteLine("   {");
+        Console.WriteLine("       // Simple role policy");
+        Console.WriteLine("       options.AddPolicy(\"RequireAdminRole\", policy =>");
+        Console.WriteLine("           policy.RequireRole(\"Admin\"));");
+        Console.WriteLine("       ");
+        Console.WriteLine("       // Multiple requirements");
+        Console.WriteLine("       options.AddPolicy(\"ElevatedRights\", policy =>");
+        Console.WriteLine("       {");
+        Console.WriteLine("           policy.RequireRole(\"Admin\", \"Manager\");");
+        Console.WriteLine("           policy.RequireClaim(\"Department\", \"IT\");");
+        Console.WriteLine("       });");
+        Console.WriteLine("   });\n");
+
+        Console.WriteLine("   var app = builder.Build();");
+        Console.WriteLine("   app.UseAuthorization();\n");
+
+        Console.WriteLine("   // Apply authorization");
+        Console.WriteLine("   app.MapGet(\"/admin\", () => \"Admin page\")");
+        Console.WriteLine("       .RequireAuthorization(\"RequireAdminRole\");\n");
+
+        Console.WriteLine("   app.MapGet(\"/user\", (ClaimsPrincipal user) =>");
+        Console.WriteLine("   {");
+        Console.WriteLine("       var isAdmin = user.IsInRole(\"Admin\");");
+        Console.WriteLine("       var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;");
+        Console.WriteLine("       ");
+        Console.WriteLine("       return new { userId, isAdmin };");
+        Console.WriteLine("   }).RequireAuthorization();\n");
+
+        Console.WriteLine("   app.Run();\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? STEP 2: Controller-Based Authorization\n");
+
+        Console.WriteLine("   // Controller with primary constructor (.NET 8+)");
+        Console.WriteLine("   [ApiController]");
+        Console.WriteLine("   [Route(\"api/[controller]\")]");
+        Console.WriteLine("   [Authorize] // Requires authentication");
+        Console.WriteLine("   public class DataController(ILogger<DataController> logger) : ControllerBase");
+        Console.WriteLine("   {");
+        Console.WriteLine("       [HttpGet]");
+        Console.WriteLine("       public IActionResult GetData()");
+        Console.WriteLine("       {");
+        Console.WriteLine("           var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;");
+        Console.WriteLine("           logger.LogInformation(\"User {UserId} accessed data\", userId);");
+        Console.WriteLine("           return Ok(new { userId, data = \"secure data\" });");
+        Console.WriteLine("       }\n");
+
+        Console.WriteLine("       [HttpPost]");
+        Console.WriteLine("       [Authorize(Roles = \"Admin\")] // Requires specific role");
+        Console.WriteLine("       public IActionResult CreateData([FromBody] DataModel model)");
+        Console.WriteLine("       {");
+        Console.WriteLine("           logger.LogInformation(\"Admin created data\");");
+        Console.WriteLine("           return Created(\"/api/data/1\", model);");
+        Console.WriteLine("       }");
+        Console.WriteLine("   }\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? STEP 3: Resource-Based Authorization\n");
+
+        Console.WriteLine("   Authorization based on resource ownership:");
+        Console.WriteLine("   ??????????????????????????????????????????????");
+        Console.WriteLine("   // Example: Document authorization handler");
+        Console.WriteLine("   // Requires: Microsoft.AspNetCore.Authorization package\n");
+
+        Console.WriteLine("   public class DocumentAuthorizationHandler :");
+        Console.WriteLine("       AuthorizationHandler<SameAuthorRequirement, Document>");
+        Console.WriteLine("   {");
+        Console.WriteLine("       protected override Task HandleRequirementAsync(");
+        Console.WriteLine("           AuthorizationHandlerContext context,");
+        Console.WriteLine("           SameAuthorRequirement requirement,");
+        Console.WriteLine("           Document resource)");
+        Console.WriteLine("       {");
+        Console.WriteLine("           var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;");
+        Console.WriteLine("           ");
+        Console.WriteLine("           if (resource.AuthorId == userId || context.User.IsInRole(\"Admin\"))");
+        Console.WriteLine("           {");
+        Console.WriteLine("               context.Succeed(requirement);");
+        Console.WriteLine("           }");
+        Console.WriteLine("           ");
+        Console.WriteLine("           return Task.CompletedTask;");
+        Console.WriteLine("       }");
+        Console.WriteLine("   }\n");
+
+        Console.WriteLine("   // Register in Program.cs");
+        Console.WriteLine("   builder.Services.AddSingleton<IAuthorizationHandler, DocumentAuthorizationHandler>();\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? Best Practices:");
+        Console.WriteLine("   ? Follow principle of least privilege");
+        Console.WriteLine("   ? Use Azure AD groups for role assignment");
+        Console.WriteLine("   ? Combine authentication with authorization");
+        Console.WriteLine("   ? Log authorization failures for auditing");
+        Console.WriteLine("   ? Test with different user roles");
+        Console.WriteLine("   ? Use policies for complex scenarios");
+        Console.WriteLine("   ? Cache role/claim lookups for performance\n");
+
+        Console.WriteLine("?? AZ-204 Exam Scenario:");
+        Console.WriteLine("   Q: 'Only users with Admin role can access /admin pages'");
+        Console.WriteLine("   A: 1. Define Admin app role in Azure AD");
+        Console.WriteLine("      2. Assign users to Admin role");
+        Console.WriteLine("      3. Use [Authorize(Roles = \"Admin\")] or RequireAuthorization");
+        Console.WriteLine("      4. User claims include roles automatically\n");
+    }
+
+    /// <summary>
+    /// Demo 6: Azure CLI Authentication Commands
+    /// </summary>
+    public static async Task Demo6_AzureCliAuthentication()
+    {
+        Console.WriteLine("\n??????????????????????????????????????????????????????????");
+        Console.WriteLine("?   DEMO 6: AZURE CLI AUTHENTICATION COMMANDS            ?");
+        Console.WriteLine("??????????????????????????????????????????????????????????\n");
+
+        await Task.Delay(500);
+
+        Console.WriteLine("?? Azure CLI Authentication Management\n");
+
+        Console.WriteLine("?? 1. Show Authentication Settings:\n");
+        Console.WriteLine("# View authentication configuration");
+        Console.WriteLine("az webapp auth show \\");
+        Console.WriteLine("  --resource-group myResourceGroup \\");
+        Console.WriteLine("  --name mywebapp\n");
+
+        await Task.Delay(300);
+
+        Console.WriteLine("?? 2. Enable Authentication (Microsoft):\n");
+        Console.WriteLine("# Enable Azure AD authentication");
+        Console.WriteLine("az webapp auth update \\");
+        Console.WriteLine("  --resource-group myResourceGroup \\");
+        Console.WriteLine("  --name mywebapp \\");
+        Console.WriteLine("  --enabled true \\");
+        Console.WriteLine("  --action LoginWithAzureActiveDirectory \\");
+        Console.WriteLine("  --aad-client-id <client-id> \\");
+        Console.WriteLine("  --aad-client-secret <client-secret> \\");
+        Console.WriteLine("  --aad-allowed-token-audiences api://mywebapp\n");
+
+        await Task.Delay(300);
+
+        Console.WriteLine("?? 3. Configure Token Store:\n");
+        Console.WriteLine("# Update authentication configuration");
+        Console.WriteLine("az webapp auth update \\");
+        Console.WriteLine("  --resource-group myResourceGroup \\");
+        Console.WriteLine("  --name mywebapp \\");
+        Console.WriteLine("  --enabled true \\");
+        Console.WriteLine("  --token-store true \\");
+        Console.WriteLine("  --token-refresh-extension-hours 72\n");
+
+        await Task.Delay(300);
+
+        Console.WriteLine("?? 4. Complete Setup Script:\n");
+        Console.WriteLine("""
+            #!/bin/bash
+            # Complete authentication setup
+
+            RG="myResourceGroup"
+            APP="mywebapp"
+            CLIENT_ID="<your-client-id>"
+            CLIENT_SECRET="<your-client-secret>"
+
+            # Enable authentication
+            az webapp auth update \
+              --resource-group $RG \
+              --name $APP \
+              --enabled true \
+              --action LoginWithAzureActiveDirectory \
+              --aad-client-id $CLIENT_ID \
+              --aad-client-secret $CLIENT_SECRET
+
+            # Enable token store
+            az webapp auth update \
+              --resource-group $RG \
+              --name $APP \
+              --token-store true
+
+            echo "? Authentication configured!"
+
+            """);
+
+        Console.WriteLine("?? Tips:");
+        Console.WriteLine("   • Use Key Vault for secrets");
+        Console.WriteLine("   • Store scripts in version control");
+        Console.WriteLine("   • Use variables for environment-specific values");
+        Console.WriteLine("   • Test authentication after each change\n");
+    }
+
+    /// <summary>
+    /// Demo 7: Best Practices and Troubleshooting
+    /// </summary>
+    public static async Task Demo7_BestPracticesAndTroubleshooting()
+    {
+        Console.WriteLine("\n??????????????????????????????????????????????????????????");
+        Console.WriteLine("?   DEMO 7: BEST PRACTICES & TROUBLESHOOTING             ?");
+        Console.WriteLine("??????????????????????????????????????????????????????????\n");
+
+        await Task.Delay(500);
+
+        Console.WriteLine("? AUTHENTICATION BEST PRACTICES\n");
+        Console.WriteLine("???????????????????????????????????????????????????????\n");
+
+        Console.WriteLine("?? Security:");
+        Console.WriteLine("   ? Always use HTTPS (required for authentication)");
+        Console.WriteLine("   ? Enable token store for token management");
+        Console.WriteLine("   ? Use Managed Identity where possible");
+        Console.WriteLine("   ? Store secrets in Azure Key Vault");
+        Console.WriteLine("   ? Enable MFA for privileged accounts");
+        Console.WriteLine("   ? Rotate client secrets regularly");
+        Console.WriteLine("   ? Use short-lived access tokens");
+        Console.WriteLine("   ? Implement proper logout functionality\n");
+
+        Console.WriteLine("??  Configuration:");
+        Console.WriteLine("   ? Use 'Require authentication' for private apps");
+        Console.WriteLine("   ? Allow unauthenticated for mixed public/private content");
+        Console.WriteLine("   ? Configure allowed redirect URLs carefully");
+        Console.WriteLine("   ? Request minimum necessary scopes");
+        Console.WriteLine("   ? Use single tenant for internal apps");
+        Console.WriteLine("   ? Enable token refresh for long-running sessions\n");
+
+        Console.WriteLine("?? Monitoring:");
+        Console.WriteLine("   ? Enable Application Insights");
+        Console.WriteLine("   ? Monitor authentication failures");
+        Console.WriteLine("   ? Track token refresh failures");
+        Console.WriteLine("   ? Review Azure AD sign-in logs");
+        Console.WriteLine("   ? Set up alerts for unusual patterns");
+        Console.WriteLine("   ? Audit role assignments regularly\n");
+
+        await Task.Delay(500);
+
+        Console.WriteLine("? COMMON ISSUES & SOLUTIONS\n");
+        Console.WriteLine("???????????????????????????????????????????????????????\n");
+
+        Console.WriteLine("Issue 1: Redirect URI Mismatch");
+        Console.WriteLine("?????????????????????????????????????????????????");
+        Console.WriteLine("Symptoms:");
+        Console.WriteLine("• Error: 'AADSTS50011: Redirect URI mismatch'");
+        Console.WriteLine("• Cannot complete sign-in\n");
+
+        Console.WriteLine("Solutions:");
+        Console.WriteLine("? Verify redirect URI in Azure AD matches exactly");
+        Console.WriteLine("? Format: https://<app>.azurewebsites.net/.auth/login/<provider>/callback");
+        Console.WriteLine("? Check for trailing slashes");
+        Console.WriteLine("? Ensure HTTPS (not HTTP)\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("Issue 2: Token Expired / Not Refreshing");
+        Console.WriteLine("?????????????????????????????????????????????????");
+        Console.WriteLine("Symptoms:");
+        Console.WriteLine("• Users logged out after 1 hour");
+        Console.WriteLine("• API calls fail with 401\n");
+
+        Console.WriteLine("Solutions:");
+        Console.WriteLine("? Enable token store");
+        Console.WriteLine("? Set appropriate refresh extension hours");
+        Console.WriteLine("? Check refresh token is being stored");
+        Console.WriteLine("? Verify provider allows refresh tokens\n");
+
+        await Task.Delay(400);
+
+        Console.WriteLine("?? TROUBLESHOOTING TOOLS\n");
+        Console.WriteLine("???????????????????????????????????????????????????????\n");
+
+        Console.WriteLine("1. /.auth/me Endpoint:");
+        Console.WriteLine("   View authenticated user information");
+        Console.WriteLine("   https://mywebapp.azurewebsites.net/.auth/me\n");
+
+        Console.WriteLine("2. Browser Developer Tools:");
+        Console.WriteLine("   • Network tab: See redirects and token exchanges");
+        Console.WriteLine("   • Application/Storage: Check cookies");
+        Console.WriteLine("   • Console: JavaScript errors\n");
+
+        Console.WriteLine("3. Application Insights:");
+        Console.WriteLine("   • Track authentication requests");
+        Console.WriteLine("   • Monitor failures and exceptions\n");
+
+        await Task.Delay(500);
+
+        Console.WriteLine("?? AZ-204 EXAM CHEAT SHEET\n");
+        Console.WriteLine("???????????????????????????????????????????????????????\n");
+
+        Console.WriteLine("Key Concepts:");
+        Console.WriteLine("• Easy Auth = App Service Authentication");
+        Console.WriteLine("• Zero-code authentication solution");
+        Console.WriteLine("• Available on all tiers (including Free)");
+        Console.WriteLine("• Supports multiple identity providers\n");
+
+        Console.WriteLine("Identity Providers (Priority for exam):");
+        Console.WriteLine("1. Microsoft Entra ID (Azure AD) ???");
+        Console.WriteLine("2. Google, Facebook, Twitter ??");
+        Console.WriteLine("3. OpenID Connect, Custom ?\n");
+
+        Console.WriteLine("Key Settings:");
+        Console.WriteLine("• Require authentication: Block all anonymous access");
+        Console.WriteLine("• Allow unauthenticated: App handles auth");
+        Console.WriteLine("• Token store: Enable for token refresh\n");
+
+        Console.WriteLine("Remember:");
+        Console.WriteLine("• /.auth/login/<provider> - Login endpoint");
+        Console.WriteLine("• /.auth/logout - Logout endpoint");
+        Console.WriteLine("• /.auth/me - User info endpoint");
+        Console.WriteLine("• X-MS-CLIENT-PRINCIPAL-* - User headers");
+        Console.WriteLine("• X-MS-TOKEN-*-ACCESS-TOKEN - Token headers\n");
+    }
+}
+
+// Helper classes for demo code examples
+public record UserProfile(string Id, string DisplayName, string Email);
+public record DataModel(string Name, string Value);
+public record Document(string Id, string AuthorId, string Content);
+
+// Note: For full authorization examples, add these packages:
+// - Microsoft.AspNetCore.Authorization
+// - Microsoft.AspNetCore.Authentication.JwtBearer
+

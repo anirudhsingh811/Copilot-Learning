@@ -1,0 +1,92 @@
+# ============================================
+# Azure App Service - Deployment Slots
+# ============================================
+
+$resourceGroup="myResourceGroup"
+$webAppName="myuniquewebapp"
+$slotName="staging"
+
+# Note: Deployment slots require Standard, Premium, or Isolated tier
+
+# 1. Upgrade to Standard Tier (Required for slots)
+az appservice plan update `
+  --name myAppServicePlan `
+  --resource-group $resourceGroup `
+  --sku S1
+
+# 2. Create a Deployment Slot
+az webapp deployment slot create `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --slot $slotName
+
+# 3. List all Deployment Slots
+az webapp deployment slot list `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --output table
+
+# 4. Configure Slot-Specific Settings (won't swap)
+az webapp config appsettings set `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --slot $slotName `
+  --settings ENVIRONMENT="Staging" `
+  --slot-settings ENVIRONMENT
+
+# 5. Deploy to a Specific Slot
+az webapp deployment source config-zip `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --slot $slotName `
+  --src "./app.zip"
+
+# 6. Swap Deployment Slots (Staging -> Production)
+az webapp deployment slot swap `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --slot $slotName `
+  --target-slot production
+
+# 7. Swap with Preview (Multi-phase swap)
+az webapp deployment slot swap `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --slot $slotName `
+  --target-slot production `
+  --action preview
+
+# 8. Complete the Swap Preview
+az webapp deployment slot swap `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --slot $slotName `
+  --target-slot production `
+  --action swap
+
+# 9. Cancel Swap Preview (Reset)
+az webapp deployment slot swap `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --slot $slotName `
+  --target-slot production `
+  --action reset
+
+# 10. Auto-Swap Configuration (Auto swap on deployment)
+az webapp deployment slot auto-swap `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --slot $slotName `
+  --auto-swap-slot production
+
+# 11. Get Slot Configuration
+az webapp config show `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --slot $slotName
+
+# 12. Delete a Deployment Slot
+az webapp deployment slot delete `
+  --name $webAppName `
+  --resource-group $resourceGroup `
+  --slot $slotName

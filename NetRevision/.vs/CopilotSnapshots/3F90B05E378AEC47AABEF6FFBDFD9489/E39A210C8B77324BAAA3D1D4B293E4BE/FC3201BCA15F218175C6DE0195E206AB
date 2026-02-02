@@ -1,0 +1,412 @@
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace NetRevision.AspNetCore;
+
+/// <summary>
+/// POC: ASP.NET Core Web API Patterns
+/// Essential patterns for modern web API development
+/// </summary>
+public class AspNetCorePatterns
+{
+    public static void RunDemo()
+    {
+        Console.WriteLine("=== ASP.NET Core Web API Patterns Demo ===\n");
+
+        Console.WriteLine("Note: This demo shows patterns and code structure.");
+        Console.WriteLine("For full web API, run as an ASP.NET Core application.\n");
+
+        // 1. Middleware Pipeline Concept
+        MiddlewarePipelineDemo();
+
+        // 2. Minimal API vs Controller
+        MinimalApiVsControllerDemo();
+
+        // 3. Model Binding and Validation
+        ModelBindingDemo();
+
+        // 4. Action Filters
+        ActionFiltersDemo();
+
+        // 5. Dependency Injection in API
+        DependencyInjectionInApiDemo();
+
+        // 6. Configuration Management
+        ConfigurationManagementDemo();
+    }
+
+    #region 1. Middleware Pipeline
+    private static void MiddlewarePipelineDemo()
+    {
+        Console.WriteLine("1. Middleware Pipeline Pattern\n");
+
+        // Middleware concept demonstration
+        var pipeline = new MiddlewarePipeline();
+        pipeline.Use(new LoggingMiddleware());
+        pipeline.Use(new AuthenticationMiddleware());
+        pipeline.Use(new ExceptionHandlingMiddleware());
+
+        Console.WriteLine("Middleware pipeline order:");
+        Console.WriteLine("1. ExceptionHandling (outer)");
+        Console.WriteLine("2. Logging");
+        Console.WriteLine("3. Authentication");
+        Console.WriteLine("4. Application Logic (inner)\n");
+
+        Console.WriteLine("Request flows: 1→2→3→4");
+        Console.WriteLine("Response flows: 4→3→2→1\n");
+    }
+
+    // Simplified middleware concept
+    private class MiddlewarePipeline
+    {
+        private readonly List<IMiddleware> _middlewares = new();
+
+        public void Use(IMiddleware middleware)
+        {
+            _middlewares.Add(middleware);
+            Console.WriteLine($"Registered: {middleware.GetType().Name}");
+        }
+    }
+
+    private interface IMiddleware { }
+
+    private class LoggingMiddleware : IMiddleware
+    {
+        // In real implementation:
+        // public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+        // {
+        //     Console.WriteLine($"Request: {context.Request.Path}");
+        //     await next(context);
+        //     Console.WriteLine($"Response: {context.Response.StatusCode}");
+        // }
+    }
+
+    private class AuthenticationMiddleware : IMiddleware
+    {
+        // Validates JWT token, sets User principal
+    }
+
+    private class ExceptionHandlingMiddleware : IMiddleware
+    {
+        // Catches exceptions, returns proper error response
+    }
+    #endregion
+
+    #region 2. Minimal API vs Controller
+    private static void MinimalApiVsControllerDemo()
+    {
+        Console.WriteLine("2. Minimal API vs Controller-based API\n");
+
+        Console.WriteLine("=== Minimal API (Recommended for simple APIs) ===");
+        Console.WriteLine(@"
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+app.MapGet(""/api/products/{id}"", async (int id, IProductService svc) =>
+{
+    var product = await svc.GetByIdAsync(id);
+    return product is not null ? Results.Ok(product) : Results.NotFound();
+});
+
+app.MapPost(""/api/products"", async (Product product, IProductService svc) =>
+{
+    var id = await svc.CreateAsync(product);
+    return Results.Created($""/api/products/{id}"", new { id });
+});
+
+app.Run();
+");
+
+        Console.WriteLine("\n=== Controller-based API (Better for complex logic) ===");
+        Console.WriteLine(@"
+[ApiController]
+[Route(""api/[controller]"")]
+public class ProductsController : ControllerBase
+{
+    private readonly IProductService _productService;
+
+    public ProductsController(IProductService productService)
+    {
+        _productService = productService;
+    }
+
+    [HttpGet(""{id}"")]
+    public async Task<ActionResult<Product>> GetById(int id)
+    {
+        var product = await _productService.GetByIdAsync(id);
+        return product is not null ? Ok(product) : NotFound();
+    }
+
+    [HttpPost]
+    public async Task<ActionResult> Create(Product product)
+    {
+        var id = await _productService.CreateAsync(product);
+        return CreatedAtAction(nameof(GetById), new { id }, product);
+    }
+}
+");
+        Console.WriteLine();
+    }
+    #endregion
+
+    #region 3. Model Binding and Validation
+    private static void ModelBindingDemo()
+    {
+        Console.WriteLine("3. Model Binding and Validation\n");
+
+        // Example DTO with validation
+        var validProduct = new ProductDto
+        {
+            Name = "Laptop",
+            Price = 999.99m,
+            Stock = 10
+        };
+
+        var invalidProduct = new ProductDto
+        {
+            Name = "", // Invalid
+            Price = -10, // Invalid
+            Stock = 0
+        };
+
+        Console.WriteLine("Valid Product:");
+        Console.WriteLine($"  Name: {validProduct.Name}, Price: ${validProduct.Price}, Stock: {validProduct.Stock}");
+
+        Console.WriteLine("\nInvalid Product would be caught by validation:");
+        Console.WriteLine("  - Name is required");
+        Console.WriteLine("  - Price must be greater than 0");
+        Console.WriteLine("  - Stock must be greater than 0\n");
+
+        Console.WriteLine("Model binding sources:");
+        Console.WriteLine("  [FromBody] - Request body (JSON)");
+        Console.WriteLine("  [FromRoute] - URL path parameter");
+        Console.WriteLine("  [FromQuery] - Query string");
+        Console.WriteLine("  [FromHeader] - HTTP header");
+        Console.WriteLine("  [FromForm] - Form data\n");
+    }
+
+    // Example DTO with data annotations
+    private class ProductDto
+    {
+        // [Required(ErrorMessage = "Name is required")]
+        // [StringLength(100, MinimumLength = 3)]
+        public string Name { get; set; } = string.Empty;
+
+        // [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than 0")]
+        public decimal Price { get; set; }
+
+        // [Range(1, int.MaxValue, ErrorMessage = "Stock must be at least 1")]
+        public int Stock { get; set; }
+    }
+    #endregion
+
+    #region 4. Action Filters
+    private static void ActionFiltersDemo()
+    {
+        Console.WriteLine("4. Action Filters Pattern\n");
+
+        Console.WriteLine("Common Action Filters:");
+        Console.WriteLine("1. Authorization Filter - Check user permissions");
+        Console.WriteLine("2. Resource Filter - Before model binding");
+        Console.WriteLine("3. Action Filter - Before/after action execution");
+        Console.WriteLine("4. Exception Filter - Handle exceptions");
+        Console.WriteLine("5. Result Filter - Before/after result execution\n");
+
+        Console.WriteLine("Example: Validation Filter");
+        Console.WriteLine(@"
+public class ValidateModelAttribute : ActionFilterAttribute
+{
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        if (!context.ModelState.IsValid)
+        {
+            context.Result = new BadRequestObjectResult(context.ModelState);
+        }
+    }
+}
+
+[HttpPost]
+[ValidateModel]
+public async Task<ActionResult> Create(ProductDto product)
+{
+    // Model is already validated
+    await _service.CreateAsync(product);
+    return Ok();
+}
+");
+        Console.WriteLine();
+    }
+    #endregion
+
+    #region 5. DI in API
+    private static void DependencyInjectionInApiDemo()
+    {
+        Console.WriteLine("5. Dependency Injection in Web API\n");
+
+        Console.WriteLine("Service Registration Patterns:");
+        Console.WriteLine(@"
+// Program.cs or Startup.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Repositories (Scoped - per request)
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+
+// Services (Scoped - per request)
+builder.Services.AddScoped<IProductService, ProductService>();
+
+// Caching (Singleton - app lifetime)
+builder.Services.AddSingleton<ICacheService, MemoryCacheService>();
+
+// HTTP Clients (Singleton with handler)
+builder.Services.AddHttpClient<IExternalApiClient, ExternalApiClient>();
+
+// Database Context (Scoped - per request)
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString(""Default"")));
+");
+        Console.WriteLine();
+    }
+    #endregion
+
+    #region 6. Configuration Management
+    private static void ConfigurationManagementDemo()
+    {
+        Console.WriteLine("6. Configuration Management\n");
+
+        Console.WriteLine("Configuration Sources (in order):");
+        Console.WriteLine("1. appsettings.json");
+        Console.WriteLine("2. appsettings.{Environment}.json");
+        Console.WriteLine("3. User secrets (Development only)");
+        Console.WriteLine("4. Environment variables");
+        Console.WriteLine("5. Command-line arguments\n");
+
+        Console.WriteLine("Options Pattern:");
+        Console.WriteLine(@"
+// appsettings.json
+{
+  ""AppSettings"": {
+    ""ApiKey"": ""your-api-key"",
+    ""MaxRetries"": 3,
+    ""Timeout"": 30
+  }
+}
+
+// Configuration class
+public class AppSettings
+{
+    public string ApiKey { get; set; }
+    public int MaxRetries { get; set; }
+    public int Timeout { get; set; }
+}
+
+// Registration
+builder.Services.Configure<AppSettings>(
+    builder.Configuration.GetSection(""AppSettings""));
+
+// Usage in controller/service
+public class MyService
+{
+    private readonly AppSettings _settings;
+    
+    public MyService(IOptions<AppSettings> options)
+    {
+        _settings = options.Value;
+    }
+}
+");
+        Console.WriteLine();
+    }
+    #endregion
+}
+
+/*
+ * =========================================================
+ * INTERVIEW QUESTIONS - ASP.NET Core Web API
+ * =========================================================
+ * 
+ * BASIC:
+ * 1. Explain the ASP.NET Core request pipeline.
+ *    Answer: Middleware components process request in order, then response in reverse.
+ *    Each middleware can: process and pass to next, short-circuit, or modify response.
+ * 
+ * 2. What is middleware and how does it differ from filters?
+ *    Answer: Middleware: Handles all requests in pipeline, runs before routing.
+ *    Filters: Run only for matched routes, tied to MVC, more specific (action, resource, etc.).
+ * 
+ * 3. Difference between Minimal APIs and Controller-based APIs?
+ *    Answer: Minimal API: Simpler, less ceremony, better for microservices, lambda-style.
+ *    Controllers: More features (filters, model binding), better for complex APIs.
+ * 
+ * 4. What are the different types of action filters?
+ *    Answer: Authorization, Resource, Action, Exception, Result filters.
+ *    Execute in specific order around action execution.
+ * 
+ * 5. How does model binding work in ASP.NET Core?
+ *    Answer: Maps request data to action parameters. Sources: body, route, query, header, form.
+ *    Automatic with proper attributes. Validates using data annotations.
+ * 
+ * INTERMEDIATE:
+ * 6. Explain the difference between AddScoped, AddSingleton, and AddTransient in Web API context.
+ *    Answer: Scoped: Per HTTP request (DbContext). Singleton: App lifetime (cache).
+ *    Transient: Every injection (lightweight services). Scoped most common in APIs.
+ * 
+ * 7. How do you implement API versioning?
+ *    Answer: URL path (/api/v1/products), query string (?api-version=1.0),
+ *    header (api-version: 1.0), media type (application/vnd.company.v1+json).
+ *    Use Microsoft.AspNetCore.Mvc.Versioning package.
+ * 
+ * 8. What is content negotiation and how does it work?
+ *    Answer: Server returns format based on Accept header. Supports JSON, XML, etc.
+ *    Formatters configured in services. Can add custom formatters.
+ * 
+ * 9. How do you handle exceptions globally in ASP.NET Core?
+ *    Answer: Exception handling middleware, UseExceptionHandler, custom middleware,
+ *    exception filters. ProblemDetails for standard error format.
+ * 
+ * 10. Explain the Options pattern for configuration.
+ *     Answer: Strongly-typed configuration using IOptions<T>. Register with Configure<T>.
+ *     IOptions: Singleton. IOptionsSnapshot: Scoped, reloads. IOptionsMonitor: Singleton, reloads.
+ * 
+ * ADVANCED:
+ * 11. How do you implement rate limiting in ASP.NET Core?
+ *     Answer: .NET 7+ has built-in rate limiting middleware. Configure policies
+ *     (fixed window, sliding window, token bucket, concurrency). Can use Redis for distributed.
+ * 
+ * 12. Explain response caching vs output caching.
+ *     Answer: Response caching: Client-side via headers (Cache-Control). Output caching:
+ *     Server-side, stores response, faster. Can combine both. Redis for distributed caching.
+ * 
+ * 13. How do you implement health checks?
+ *     Answer: AddHealthChecks() with custom checks (database, external APIs). Expose endpoint
+ *     with MapHealthChecks("/health"). Use for orchestrators (K8s liveness/readiness probes).
+ * 
+ * 14. What is CORS and how do you configure it securely?
+ *     Answer: Cross-Origin Resource Sharing. Configure specific origins, methods, headers.
+ *     Avoid AllowAnyOrigin in production. Use WithOrigins for specific domains.
+ * 
+ * 15. How do you implement request/response logging without affecting performance?
+ *     Answer: Use logging middleware with sampling. Structured logging (Serilog). Async logging.
+ *     Avoid logging body for large payloads. Use correlation IDs for tracing.
+ * 
+ * SCENARIO-BASED:
+ * 16. API needs to support both JSON and XML. How do you implement?
+ *     Answer: Add XML formatter: services.AddControllers().AddXmlSerializerFormatters().
+ *     Content negotiation handles format based on Accept header. Test with Postman.
+ * 
+ * 17. Design authentication and authorization for a multi-tenant API.
+ *     Answer: JWT with tenant claim. Middleware extracts tenant from token/header.
+ *     Authorization policies check tenant access. Scoped ITenantContext service.
+ * 
+ * 18. API response times are slow. How do you diagnose and optimize?
+ *     Answer: Application Insights / APM. Check database queries (N+1). Add caching.
+ *     Use async/await. Optimize serialization. Add response compression. CDN for static content.
+ * 
+ * 19. How do you implement API documentation?
+ *     Answer: Swagger/OpenAPI with Swashbuckle. XML comments for descriptions.
+ *     SwaggerDoc for API info. Annotations for examples. Serve UI at /swagger.
+ * 
+ * 20. Design a resilient API that calls external services.
+ *     Answer: Use Polly for retry, circuit breaker, timeout policies. HTTP client factory.
+ *     Bulkhead isolation. Fallback responses. Health checks. Monitoring and alerts.
+ */

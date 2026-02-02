@@ -1,0 +1,481 @@
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace NetRevision.DotNetCore;
+
+/// <summary>
+/// POC: Dependency Injection and Inversion of Control
+/// Core pattern in modern .NET applications
+/// </summary>
+public class DependencyInjectionPatterns
+{
+    public static void RunDemo()
+    {
+        Console.WriteLine("=== Dependency Injection & IoC Demo ===\n");
+
+        // 1. Manual DI without container
+        ManualDependencyInjectionDemo();
+
+        // 2. Built-in DI Container
+        BuiltInDIContainerDemo();
+
+        // 3. Service Lifetimes
+        ServiceLifetimesDemo();
+
+        // 4. Constructor Injection
+        ConstructorInjectionDemo();
+
+        // 5. Multiple Interface Implementations
+        MultipleImplementationsDemo();
+    }
+
+    #region 1. Manual Dependency Injection
+    private static void ManualDependencyInjectionDemo()
+    {
+        Console.WriteLine("1. Manual Dependency Injection (Without Container)\n");
+
+        // Bad: Tight coupling
+        var badService = new BadOrderService();
+        badService.ProcessOrder(123);
+
+        // Good: Loose coupling through DI
+        ILogger logger = new ConsoleLogger();
+        IEmailService emailService = new EmailService();
+        IPaymentGateway paymentGateway = new PaymentGateway();
+
+        var goodService = new GoodOrderService(logger, emailService, paymentGateway);
+        goodService.ProcessOrder(123);
+
+        Console.WriteLine();
+    }
+
+    // Bad example - tight coupling
+    private class BadOrderService
+    {
+        private readonly ConsoleLogger _logger = new();
+        private readonly EmailService _emailService = new();
+        private readonly PaymentGateway _paymentGateway = new();
+
+        public void ProcessOrder(int orderId)
+        {
+            _logger.Log("Processing order");
+            _paymentGateway.ProcessPayment(100);
+            _emailService.SendEmail("order@example.com", "Order confirmation");
+        }
+    }
+
+    // Good example - loose coupling
+    private class GoodOrderService
+    {
+        private readonly ILogger _logger;
+        private readonly IEmailService _emailService;
+        private readonly IPaymentGateway _paymentGateway;
+
+        public GoodOrderService(ILogger logger, IEmailService emailService, IPaymentGateway paymentGateway)
+        {
+            _logger = logger;
+            _emailService = emailService;
+            _paymentGateway = paymentGateway;
+        }
+
+        public void ProcessOrder(int orderId)
+        {
+            _logger.Log($"Processing order {orderId}");
+            _paymentGateway.ProcessPayment(100);
+            _emailService.SendEmail("order@example.com", "Order confirmation");
+        }
+    }
+    #endregion
+
+    #region 2. Built-in DI Container
+    private static void BuiltInDIContainerDemo()
+    {
+        Console.WriteLine("2. Built-in .NET DI Container\n");
+
+        // Create service collection
+        var services = new ServiceCollection();
+
+        // Register services
+        services.AddSingleton<ILogger, ConsoleLogger>();
+        services.AddScoped<IEmailService, EmailService>();
+        services.AddTransient<IPaymentGateway, PaymentGateway>();
+        services.AddTransient<IOrderService, OrderService>();
+
+        // Build service provider
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // Resolve service
+        var orderService = serviceProvider.GetRequiredService<IOrderService>();
+        orderService.ProcessOrder(456);
+
+        Console.WriteLine();
+    }
+
+    private interface IOrderService
+    {
+        void ProcessOrder(int orderId);
+    }
+
+    private class OrderService : IOrderService
+    {
+        private readonly ILogger _logger;
+        private readonly IEmailService _emailService;
+        private readonly IPaymentGateway _paymentGateway;
+
+        public OrderService(ILogger logger, IEmailService emailService, IPaymentGateway paymentGateway)
+        {
+            _logger = logger;
+            _emailService = emailService;
+            _paymentGateway = paymentGateway;
+        }
+
+        public void ProcessOrder(int orderId)
+        {
+            _logger.Log($"[OrderService] Processing order {orderId}");
+            _paymentGateway.ProcessPayment(100);
+            _emailService.SendEmail("order@example.com", "Order processed");
+        }
+    }
+    #endregion
+
+    #region 3. Service Lifetimes
+    private static void ServiceLifetimesDemo()
+    {
+        Console.WriteLine("3. Service Lifetimes (Singleton, Scoped, Transient)\n");
+
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+
+        // Singleton - single instance for application lifetime
+        services.AddSingleton<ISingletonService, SingletonService>();
+
+        // Scoped - instance per scope (e.g., per HTTP request)
+        services.AddScoped<IScopedService, ScopedService>();
+
+        // Transient - new instance every time
+        services.AddTransient<ITransientService, TransientService>();
+
+        services.AddTransient<LifetimeDemo>();
+
+        using var serviceProvider = services.BuildServiceProvider();
+
+        Console.WriteLine("=== Scope 1 ===");
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var demo1 = scope.ServiceProvider.GetRequiredService<LifetimeDemo>();
+            var demo2 = scope.ServiceProvider.GetRequiredService<LifetimeDemo>();
+            demo1.ShowInstanceIds("First call");
+            demo2.ShowInstanceIds("Second call");
+        }
+
+        Console.WriteLine("\n=== Scope 2 ===");
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var demo = scope.ServiceProvider.GetRequiredService<LifetimeDemo>();
+            demo.ShowInstanceIds("New scope");
+        }
+
+        Console.WriteLine();
+    }
+
+    private interface ISingletonService { Guid InstanceId { get; } }
+    private interface IScopedService { Guid InstanceId { get; } }
+    private interface ITransientService { Guid InstanceId { get; } }
+
+    private class SingletonService : ISingletonService
+    {
+        public Guid InstanceId { get; } = Guid.NewGuid();
+    }
+
+    private class ScopedService : IScopedService
+    {
+        public Guid InstanceId { get; } = Guid.NewGuid();
+    }
+
+    private class TransientService : ITransientService
+    {
+        public Guid InstanceId { get; } = Guid.NewGuid();
+    }
+
+    private class LifetimeDemo
+    {
+        private readonly ISingletonService _singleton;
+        private readonly IScopedService _scoped;
+        private readonly ITransientService _transient;
+
+        public LifetimeDemo(ISingletonService singleton, IScopedService scoped, ITransientService transient)
+        {
+            _singleton = singleton;
+            _scoped = scoped;
+            _transient = transient;
+        }
+
+        public void ShowInstanceIds(string context)
+        {
+            Console.WriteLine($"{context}:");
+            Console.WriteLine($"  Singleton: {_singleton.InstanceId.ToString()[..8]}");
+            Console.WriteLine($"  Scoped: {_scoped.InstanceId.ToString()[..8]}");
+            Console.WriteLine($"  Transient: {_transient.InstanceId.ToString()[..8]}");
+        }
+    }
+    #endregion
+
+    #region 4. Constructor Injection Patterns
+    private static void ConstructorInjectionDemo()
+    {
+        Console.WriteLine("4. Constructor Injection Best Practices\n");
+
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+
+        services.AddSingleton<ILogger, ConsoleLogger>();
+        services.AddTransient<IRepository, Repository>();
+        services.AddTransient<ProductService>();
+
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var productService = serviceProvider.GetRequiredService<ProductService>();
+        productService.AddProduct("Laptop", 999.99m);
+
+        Console.WriteLine();
+    }
+
+    private interface IRepository
+    {
+        void Save(string entity);
+    }
+
+    private class Repository : IRepository
+    {
+        private readonly ILogger _logger;
+
+        public Repository(ILogger logger)
+        {
+            _logger = logger;
+        }
+
+        public void Save(string entity)
+        {
+            _logger.Log($"[Repository] Saving entity: {entity}");
+        }
+    }
+
+    private class ProductService
+    {
+        private readonly ILogger _logger;
+        private readonly IRepository _repository;
+
+        // Constructor injection - dependencies are explicit and required
+        public ProductService(ILogger logger, IRepository repository)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        }
+
+        public void AddProduct(string name, decimal price)
+        {
+            _logger.Log($"[ProductService] Adding product: {name} - ${price}");
+            _repository.Save($"Product: {name}");
+        }
+    }
+    #endregion
+
+    #region 5. Multiple Implementations
+    private static void MultipleImplementationsDemo()
+    {
+        Console.WriteLine("5. Multiple Interface Implementations\n");
+
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+
+        // Register multiple implementations
+        services.AddTransient<INotificationService, EmailNotificationService>();
+        services.AddTransient<INotificationService, SmsNotificationService>();
+        services.AddTransient<INotificationService, PushNotificationService>();
+
+        services.AddTransient<NotificationManager>();
+
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // Resolve all implementations
+        var allNotifications = serviceProvider.GetServices<INotificationService>();
+        Console.WriteLine($"Registered {allNotifications.Count()} notification services");
+
+        // Use composite service
+        var manager = serviceProvider.GetRequiredService<NotificationManager>();
+        manager.SendAllNotifications("Hello from all channels!");
+
+        Console.WriteLine();
+    }
+
+    private interface INotificationService
+    {
+        void Send(string message);
+    }
+
+    private class EmailNotificationService : INotificationService
+    {
+        public void Send(string message) => Console.WriteLine($"[Email] {message}");
+    }
+
+    private class SmsNotificationService : INotificationService
+    {
+        public void Send(string message) => Console.WriteLine($"[SMS] {message}");
+    }
+
+    private class PushNotificationService : INotificationService
+    {
+        public void Send(string message) => Console.WriteLine($"[Push] {message}");
+    }
+
+    private class NotificationManager
+    {
+        private readonly IEnumerable<INotificationService> _notificationServices;
+
+        public NotificationManager(IEnumerable<INotificationService> notificationServices)
+        {
+            _notificationServices = notificationServices;
+        }
+
+        public void SendAllNotifications(string message)
+        {
+            foreach (var service in _notificationServices)
+            {
+                service.Send(message);
+            }
+        }
+    }
+    #endregion
+
+    #region Supporting Interfaces and Implementations
+    private interface ILogger
+    {
+        void Log(string message);
+    }
+
+    private class ConsoleLogger : ILogger
+    {
+        public void Log(string message) => Console.WriteLine($"[LOG] {message}");
+    }
+
+    private interface IEmailService
+    {
+        void SendEmail(string to, string message);
+    }
+
+    private class EmailService : IEmailService
+    {
+        public void SendEmail(string to, string message)
+        {
+            Console.WriteLine($"[EMAIL] Sending to {to}: {message}");
+        }
+    }
+
+    private interface IPaymentGateway
+    {
+        void ProcessPayment(decimal amount);
+    }
+
+    private class PaymentGateway : IPaymentGateway
+    {
+        public void ProcessPayment(decimal amount)
+        {
+            Console.WriteLine($"[PAYMENT] Processing ${amount}");
+        }
+    }
+    #endregion
+}
+
+/*
+ * =========================================================
+ * INTERVIEW QUESTIONS - Dependency Injection & IoC
+ * =========================================================
+ * 
+ * BASIC:
+ * 1. What is Dependency Injection and why is it important?
+ *    Answer: Design pattern where dependencies are provided to class rather than created by it.
+ *    Benefits: testability, loose coupling, maintainability, follows SOLID principles.
+ * 
+ * 2. What's the difference between Dependency Injection and Dependency Inversion?
+ *    Answer: DI is implementation technique. Dependency Inversion Principle (DIP) is SOLID principle:
+ *    depend on abstractions, not concretions. DI implements DIP.
+ * 
+ * 3. Explain the three types of dependency injection.
+ *    Answer: Constructor injection (preferred - explicit dependencies), Property injection
+ *    (optional dependencies), Method injection (dependency needed for specific method).
+ * 
+ * INTERMEDIATE:
+ * 4. Explain service lifetimes: Singleton, Scoped, Transient.
+ *    Answer: 
+ *    - Singleton: One instance for app lifetime (stateless services, caching)
+ *    - Scoped: One instance per scope/request (EF DbContext, per-request state)
+ *    - Transient: New instance every time (stateless, lightweight services)
+ * 
+ * 5. What happens if you inject a Transient service into a Singleton?
+ *    Answer: Captive dependency problem. Transient becomes singleton (held for singleton lifetime).
+ *    Can cause issues with state, connections. Analyzers detect this.
+ * 
+ * 6. How do you register multiple implementations of the same interface?
+ *    Answer: Register all implementations, resolve with IEnumerable<T>. Container returns all.
+ *    Use for strategy pattern, notification systems, plugin architecture.
+ * 
+ * 7. When would you use IServiceProvider directly vs constructor injection?
+ *    Answer: Constructor injection preferred. IServiceProvider for: factory pattern, resolving
+ *    dependencies dynamically at runtime, service locator pattern (anti-pattern in most cases).
+ * 
+ * ADVANCED:
+ * 8. Explain keyed services in .NET 8+.
+ *    Answer: Register multiple implementations with keys. Resolve specific implementation
+ *    using [FromKeyedServices] attribute. Alternative to factory pattern for named services.
+ * 
+ * 9. How do you handle circular dependencies?
+ *    Answer: Generally indicates design issue. Solutions: introduce interface, use factory,
+ *    lazy loading, event-based communication, redesign dependencies. Container throws exception.
+ * 
+ * 10. What is the difference between AddScoped and AddTransient in Web API context?
+ *     Answer: Scoped lives for entire HTTP request, shared across services in request.
+ *     Transient created each time resolved, even within same request. Scoped better for
+ *     request-scoped state like DbContext.
+ * 
+ * 11. Explain service descriptors and how they work.
+ *     Answer: Describes how service is registered (ServiceType, ImplementationType, Lifetime).
+ *     Can register by instance, factory method, or type. ServiceDescriptor is metadata
+ *     used by container to resolve services.
+ * 
+ * 12. How do you implement a factory pattern with DI?
+ *     Answer: Register factory interface and implementation. Factory resolves services from
+ *     IServiceProvider. Alternative: use Func<T> or typed factories. .NET 8+ has keyed services.
+ * 
+ * SCENARIO-BASED:
+ * 13. You need different email providers based on environment. How would you design this?
+ *     Answer: IEmailProvider interface. Register different implementations based on configuration.
+ *     Use factory pattern or keyed services. Inject IConfiguration to factory for runtime decision.
+ * 
+ * 14. Design a multi-tenant application where each tenant has different database connection.
+ *     Answer: Scoped ITenantProvider to identify tenant. Factory for DbContext using tenant info.
+ *     Register as scoped. Middleware sets tenant context. Consider connection pooling per tenant.
+ * 
+ * 15. Application needs to execute multiple validators for a request. Design using DI.
+ *     Answer: IValidator<T> interface. Register all validators. Resolve IEnumerable<IValidator<T>>.
+ *     Composite validator executes all. Use FluentValidation or similar library.
+ * 
+ * 16. You have a service that needs expensive initialization. How to optimize?
+ *     Answer: Register as Singleton if stateless. Use lazy initialization: Lazy<T>.
+ *     Consider IHostedService for startup initialization. Cache expensive resources.
+ * 
+ * LEADERSHIP/ARCHITECTURE:
+ * 17. How do you establish DI best practices in your team?
+ *     Answer: Code reviews, documentation, examples. Avoid service locator anti-pattern.
+ *     Use analyzers for captive dependencies. Prefer constructor injection. Keep constructors
+ *     clean (no logic). Use interfaces for testability.
+ * 
+ * 18. How do you handle DI container validation in production?
+ *     Answer: Call ValidateOnBuild() or ValidateScopes. Catches configuration errors at startup.
+ *     Integration tests that resolve all services. Health checks for critical dependencies.
+ * 
+ * 19. When would you choose a third-party DI container over built-in?
+ *     Answer: Built-in sufficient for most cases. Third-party (Autofac, SimpleInjector) for:
+ *     advanced features (property injection, interceptors, named registrations, modules),
+ *     better performance, convention-based registration. Consider maintenance overhead.
+ * 
+ * 20. Design a plugin architecture using DI.
+ *     Answer: IPlugin interface. Scan assemblies for implementations. Register discovered plugins.
+ *     Use IEnumerable<IPlugin> to get all. Consider plugin lifecycle, isolation, configuration.
+ *     MEF or custom plugin loader with DI integration.
+ */

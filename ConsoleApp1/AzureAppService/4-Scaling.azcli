@@ -1,0 +1,85 @@
+# ============================================
+# Azure App Service - Scaling
+# ============================================
+
+$resourceGroup="myResourceGroup"
+$appServicePlan="myAppServicePlan"
+$webAppName="myuniquewebapp"
+
+# ============================================
+# Manual Scaling (Scale Up/Down)
+# ============================================
+
+# 1. Scale Up to Premium tier
+az appservice plan update `
+  --name $appServicePlan `
+  --resource-group $resourceGroup `
+  --sku P1V3
+
+# 2. Scale Down to Basic tier
+az appservice plan update `
+  --name $appServicePlan `
+  --resource-group $resourceGroup `
+  --sku B1
+
+# ============================================
+# Manual Scale Out (Add more instances)
+# ============================================
+
+# 3. Scale Out to 3 instances
+az appservice plan update `
+  --name $appServicePlan `
+  --resource-group $resourceGroup `
+  --number-of-workers 3
+
+# ============================================
+# Auto-Scaling Configuration
+# ============================================
+
+# 4. Create Auto-scale Settings (Scale out based on CPU)
+az monitor autoscale create `
+  --resource-group $resourceGroup `
+  --resource $appServicePlan `
+  --resource-type "Microsoft.Web/serverfarms" `
+  --name "autoscale-$appServicePlan" `
+  --min-count 1 `
+  --max-count 10 `
+  --count 2
+
+# 5. Add a Rule: Scale Out when CPU > 70%
+az monitor autoscale rule create `
+  --resource-group $resourceGroup `
+  --autoscale-name "autoscale-$appServicePlan" `
+  --condition "Percentage CPU > 70 avg 5m" `
+  --scale out 1
+
+# 6. Add a Rule: Scale In when CPU < 30%
+az monitor autoscale rule create `
+  --resource-group $resourceGroup `
+  --autoscale-name "autoscale-$appServicePlan" `
+  --condition "Percentage CPU < 30 avg 5m" `
+  --scale in 1
+
+# 7. Scale based on Memory
+az monitor autoscale rule create `
+  --resource-group $resourceGroup `
+  --autoscale-name "autoscale-$appServicePlan" `
+  --condition "Memory Percentage > 80 avg 5m" `
+  --scale out 2
+
+# 8. Scale based on HTTP Queue Length
+az monitor autoscale rule create `
+  --resource-group $resourceGroup `
+  --autoscale-name "autoscale-$appServicePlan" `
+  --condition "Http Queue Length > 100 avg 1m" `
+  --scale out 1
+
+# 9. View Auto-scale Settings
+az monitor autoscale show `
+  --resource-group $resourceGroup `
+  --name "autoscale-$appServicePlan"
+
+# 10. Delete Auto-scale Settings
+az monitor autoscale delete `
+  --resource-group $resourceGroup `
+  --name "autoscale-$appServicePlan"

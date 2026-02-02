@@ -1,0 +1,430 @@
+# Event-Driven Architecture POC - Complete Flow Diagram
+
+## ?? Table of Contents
+1. [System Overview](#system-overview)
+2. [Detailed Event Flow](#detailed-event-flow)
+3. [Component Architecture](#component-architecture)
+4. [Sequence Diagram](#sequence-diagram)
+5. [Data Flow](#data-flow)
+6. [Error Scenarios](#error-scenarios)
+
+---
+
+## ??? System Overview
+
+This POC demonstrates an **Event-Driven E-commerce Order Processing System** using MQTT as the message broker.
+
+### Services Involved:
+- **OrderService** (Port 5000): REST API that creates orders
+- **PaymentService**: Processes payments asynchronously
+- **InventoryService**: Manages inventory reservations
+- **NotificationService**: Sends notifications for all events
+- **MQTT Broker** (Mosquitto): Event distribution hub
+
+### MQTT Topics:
+- `orders/created` - Published by OrderService
+- `payments/processed` - Published by PaymentService
+- `inventory/reserved` - Published by InventoryService
+
+---
+
+## ?? Detailed Event Flow
+
+### Step-by-Step Process:
+
+```
+???????????????????????????????????????????????????????????????????
+?                    CLIENT (API Consumer)                        ?
+???????????????????????????????????????????????????????????????????
+                           ?
+                           ? HTTP POST /api/orders
+                           ? {
+                           ?   "customerId": "C123",
+                           ?   "items": [
+                           ?     {"productId": "P001", "quantity": 2, "price": 29.99}
+                           ?   ]
+                           ? }
+                           ?
+?????????????????????????????????????????????????????????????????????
+?                      ORDER SERVICE (Port 5000)                    ?
+?                                                                   ?
+?  1. Generate OrderId: Guid.NewGuid()                             ?
+?  2. Create OrderCreatedEvent                                     ?
+?  3. Calculate TotalAmount                                        ?
+?  4. Publish to MQTT topic: "orders/created"                      ?
+?  5. Return 200 OK with OrderId                                   ?
+?????????????????????????????????????????????????????????????????????
+                           ?
+                           ? Publishes OrderCreatedEvent
+                           ?
+?????????????????????????????????????????????????????????????????????
+?                    MQTT BROKER (Mosquitto:1883)                   ?
+?                                                                   ?
+?                    Topic: orders/created                          ?
+?                                                                   ?
+?   Event Payload:                                                 ?
+?   {                                                              ?
+?     "orderId": "guid",                                           ?
+?     "customerId": "C123",                                        ?
+?     "items": [...],                                              ?
+?     "totalAmount": 59.98,                                        ?
+?     "createdAt": "2024-01-15T10:30:00Z"                         ?
+?   }                                                              ?
+????????????????????????????????????????????????????????????????????
+         ?                 ?                ?
+         ?                 ?                ????????????????????????
+         ?                 ?                                       ?
+         ?                 ?                                       ?
+??????????????????? ???????????????????              ????????????????????????
+? PAYMENT SERVICE ? ? INVENTORY       ?              ? NOTIFICATION SERVICE ?
+?                 ? ?                 ?              ?                      ?
+? Subscribes to:  ? ?                 ?              ? Subscribes to:       ?
+? orders/created  ? ? Subscribes to:  ?              ? - orders/created     ?
+?                 ? ? orders/created  ?              ? - payments/processed ?
+??????????????????? ???????????????????              ? - inventory/reserved ?
+         ?                   ?                        ????????????????????????
+         ?                   ?                                   ?
+         ? Process Payment   ? Reserve Inventory                 ?
+         ? (1 sec delay)     ? (0.8 sec delay)                   ?
+         ?                   ?                                   ?
+         ?                   ?                                   ?
+         ?                   ?                           Sends notification:
+         ?                   ?                           "Order confirmation
+         ?                   ?                            email sent to C123"
+         ?                   ?
+         ? Publish           ? Publish
+         ? PaymentProcessed  ? InventoryReserved
+         ?                   ?
+         ?                   ?
+?????????????????????????????????????????????????????????????????????
+?                    MQTT BROKER (Mosquitto:1883)                   ?
+?                                                                   ?
+?  Topic: payments/processed    ?  Topic: inventory/reserved        ?
+?  {                            ?  {                                ?
+?    "orderId": "guid",         ?    "orderId": "guid",            ?
+?    "paymentId": "guid",       ?    "reservationId": "guid",      ?
+?    "amount": 59.98,           ?    "success": true,              ?
+?    "success": true,           ?    "reservedAt": "timestamp"     ?
+?    "processedAt": "timestamp" ?  }                               ?
+?  }                            ?                                  ?
+?????????????????????????????????????????????????????????????????????
+         ?                                    ?
+         ?                                    ?
+         ?                                    ?
+????????????????????????????????????????????????????????????????????
+?                    NOTIFICATION SERVICE                          ?
+?                                                                  ?
+?  Receives both events and sends:                                ?
+?  - "Payment confirmation for Order {orderId}"                   ?
+?  - "Inventory confirmation for Order {orderId}"                 ?
+????????????????????????????????????????????????????????????????????
+```
+
+---
+
+## ??? Component Architecture
+
+```
+???????????????????????????????????????????????????????????????????????
+?                         PROJECT STRUCTURE                           ?
+???????????????????????????????????????????????????????????????????????
+
+EDA-MQTT-Interview-Prep/
+?
+??? src/
+?   ??? OrderService/              [REST API - Entry Point]
+?   ?   ??? Program.cs             • Minimal API with Swagger
+?   ?   ??? OrderService.csproj    • Endpoint: POST /api/orders
+?   ?                               • Returns: OrderId + Message
+?   ?
+?   ??? PaymentService/            [Event Consumer & Producer]
+?   ?   ??? Program.cs             • Subscribes: orders/created
+?   ?   ??? PaymentService.csproj  • Publishes: payments/processed
+?   ?                               • Simulates: 1 second processing
+?   ?
+?   ??? InventoryService/          [Event Consumer & Producer]
+?   ?   ??? Program.cs             • Subscribes: orders/created
+?   ?   ??? InventoryService.csproj • Publishes: inventory/reserved
+?   ?                               • Simulates: 0.8 second processing
+?   ?
+?   ??? NotificationService/       [Event Consumer Only]
+?   ?   ??? Program.cs             • Subscribes: all three topics
+?   ?   ??? NotificationService... • Logs: notification messages
+?   ?
+?   ??? Shared/                    [Common Library]
+?       ??? MqttClientHelper.cs    • MQTT connection wrapper
+?       ??? Events/                • Event DTOs
+?       ?   ??? OrderCreatedEvent.cs
+?       ?   ??? PaymentProcessedEvent.cs
+?       ?   ??? InventoryReservedEvent.cs
+?       ??? Shared.csproj
+?
+??? infrastructure/
+?   ??? docker-compose.yml         • Mosquitto MQTT Broker setup
+?
+??? docs/
+    ??? Interview-Guide.md         • Theory and concepts
+```
+
+---
+
+## ?? Sequence Diagram
+
+```
+Client          OrderService    MQTT Broker    PaymentService    InventoryService    NotificationService
+  ?                 ?                ?                ?                  ?                    ?
+  ?  POST Order     ?                ?                ?                  ?                    ?
+  ?????????????????>?                ?                ?                  ?                    ?
+  ?                 ?                ?                ?                  ?                    ?
+  ?                 ? Generate ID    ?                ?                  ?                    ?
+  ?                 ? Create Event   ?                ?                  ?                    ?
+  ?                 ?                ?                ?                  ?                    ?
+  ?                 ? Publish        ?                ?                  ?                    ?
+  ?                 ? OrderCreated   ?                ?                  ?                    ?
+  ?                 ????????????????>?                ?                  ?                    ?
+  ?                 ?                ?                ?                  ?                    ?
+  ?  200 OK         ?                ?  Broadcast     ?                  ?                    ?
+  ?  {OrderId: ... }?                ????????????????>?                  ?                    ?
+  ?<?????????????????                ???????????????????????????????????>?                    ?
+  ?                 ?                ?????????????????????????????????????????????????????????>?
+  ?                 ?                ?                ?                  ?                    ?
+  ?                 ?                ?                ? Process Payment  ? Reserve Inventory  ? Log Notification
+  ?                 ?                ?                ? (1s delay)       ? (0.8s delay)       ?
+  ?                 ?                ?                ?                  ?                    ?
+  ?                 ?                ?  Publish       ?                  ?                    ?
+  ?                 ?                ?  PaymentProc   ?                  ?                    ?
+  ?                 ?                ?<????????????????                  ?                    ?
+  ?                 ?                ?                ?                  ?                    ?
+  ?                 ?                ?                ?  Publish         ?                    ?
+  ?                 ?                ?                ?  InvReserved     ?                    ?
+  ?                 ?                ?<??????????????????????????????????                    ?
+  ?                 ?                ?                ?                  ?                    ?
+  ?                 ?                ?  Broadcast     ?                  ?                    ?
+  ?                 ?                ?????????????????????????????????????????????????????????>?
+  ?                 ?                ?                ?                  ?                    ?
+  ?                 ?                ?                ?                  ?   Log Notifications
+  ?                 ?                ?                ?                  ?   (Payment & Inv)
+```
+
+---
+
+## ?? Data Flow
+
+### 1. **OrderCreatedEvent** Structure:
+```json
+{
+  "orderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "customerId": "C123",
+  "items": [
+    {
+      "productId": "P001",
+      "quantity": 2,
+      "price": 29.99
+    }
+  ],
+  "totalAmount": 59.98,
+  "createdAt": "2024-01-15T10:30:00.000Z"
+}
+```
+
+### 2. **PaymentProcessedEvent** Structure:
+```json
+{
+  "orderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "paymentId": "7bc21a45-8923-4671-a1ed-3d874e22bfa2",
+  "amount": 59.98,
+  "success": true,
+  "processedAt": "2024-01-15T10:30:01.000Z"
+}
+```
+
+### 3. **InventoryReservedEvent** Structure:
+```json
+{
+  "orderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "reservationId": "9de43f67-1234-5678-b9cd-4e567f89abc3",
+  "success": true,
+  "reservedAt": "2024-01-15T10:30:00.800Z"
+}
+```
+
+---
+
+## ?? Error Scenarios
+
+### Current Implementation (Happy Path Only):
+The POC currently demonstrates the **happy path** where all operations succeed.
+
+### Potential Error Scenarios to Consider:
+
+1. **MQTT Broker Down**
+   - OrderService cannot publish
+   - Services cannot subscribe
+   - **Solution**: Implement connection retry logic
+
+2. **Payment Failure**
+   - Payment gateway timeout
+   - Insufficient funds
+   - **Solution**: Set `success: false` and implement compensation
+
+3. **Inventory Out of Stock**
+   - Insufficient inventory
+   - **Solution**: Publish failure event, trigger order cancellation
+
+4. **Message Loss**
+   - Network interruption
+   - **Solution**: Implement QoS levels (0, 1, or 2)
+
+5. **Duplicate Messages**
+   - MQTT resends message
+   - **Solution**: Implement idempotency keys
+
+---
+
+## ?? Running the POC
+
+### Prerequisites:
+```bash
+# .NET 8 SDK installed
+# Docker Desktop running
+```
+
+### Steps:
+
+1. **Start MQTT Broker:**
+   ```bash
+   cd infrastructure
+   docker-compose up -d
+   ```
+
+2. **Open 4 Terminal Windows:**
+
+   **Terminal 1 - OrderService:**
+   ```bash
+   dotnet run --project src/OrderService
+   # Listens on http://localhost:5000
+   ```
+
+   **Terminal 2 - PaymentService:**
+   ```bash
+   dotnet run --project src/PaymentService
+   # Console output shows payment processing
+   ```
+
+   **Terminal 3 - InventoryService:**
+   ```bash
+   dotnet run --project src/InventoryService
+   # Console output shows inventory reservations
+   ```
+
+   **Terminal 4 - NotificationService:**
+   ```bash
+   dotnet run --project src/NotificationService
+   # Console output shows all notifications
+   ```
+
+3. **Test the Flow:**
+
+   **Using PowerShell (Windows - Recommended):**
+   ```powershell
+   # Option 1: Use the test script (easiest)
+   .\scripts\Test-OrderAPI.ps1
+   
+   # Option 2: Use Invoke-RestMethod
+   Invoke-RestMethod -Uri http://localhost:5000/api/orders `
+     -Method POST `
+     -ContentType "application/json" `
+     -Body '{"customerId": "C123", "items": [{"productId": "P001", "quantity": 2, "price": 29.99}]}'
+   
+   # Option 3: Use real curl.exe (not the PowerShell alias)
+   curl.exe -X POST http://localhost:5000/api/orders `
+     -H "Content-Type: application/json" `
+     -d "{\"customerId\": \"C123\", \"items\": [{\"productId\": \"P001\", \"quantity\": 2, \"price\": 29.99}]}"
+
+   ```
+   
+   **Using Bash (Linux/Mac):**
+   ```bash
+   curl -X POST http://localhost:5000/api/orders \
+     -H "Content-Type: application/json" \
+     -d '{
+       "customerId": "C123",
+       "items": [
+         {
+           "productId": "P001",
+           "quantity": 2,
+           "price": 29.99
+         }
+       ]
+     }'
+   ```
+
+4. **Observe Console Outputs:**
+   - OrderService: Returns OrderId
+   - PaymentService: Logs payment processing
+   - InventoryService: Logs inventory reservation
+   - NotificationService: Logs all three notifications
+
+---
+
+## ?? Key Concepts Demonstrated
+
+### 1. **Loose Coupling**
+Services don't know about each other, only about events
+
+### 2. **Asynchronous Processing**
+OrderService responds immediately while processing happens in background
+
+### 3. **Scalability**
+Each service can be scaled independently
+
+### 4. **Pub-Sub Pattern**
+One publisher, multiple subscribers per topic
+
+### 5. **Event-Driven Architecture**
+Business events drive the system behavior
+
+---
+
+## ?? Interview Focus Points
+
+When discussing this POC in interviews:
+
+1. **Explain the Event Flow**: Walk through step-by-step
+2. **Discuss Scalability**: How to scale each service
+3. **Handle Failures**: Compensation patterns, retries, dead-letter queues
+4. **Compare Technologies**: MQTT vs RabbitMQ vs Kafka
+5. **QoS Levels**: At most once (0), At least once (1), Exactly once (2)
+6. **Idempotency**: Handling duplicate messages
+7. **Monitoring**: How to trace events across services
+8. **Testing**: Unit tests, integration tests, chaos testing
+
+---
+
+## ?? Related Documentation
+
+- [README.md](README.md) - Quick start guide
+- [PROJECT-STRUCTURE.md](PROJECT-STRUCTURE.md) - Architecture details
+- [SETUP.md](SETUP.md) - Installation instructions
+- [docs/Interview-Guide.md](docs/Interview-Guide.md) - Theory and concepts
+
+---
+
+## ?? Extension Ideas'
+
+1. **Add Correlation IDs** - Track events across services
+2. **Implement Saga Pattern** - Distributed transaction management
+3. **Add Error Handling** - Retry logic and dead-letter queues
+4. **Health Checks** - Monitor service availability
+5. **Event Sourcing** - Store all events as source of truth
+6. **CQRS Pattern** - Separate read and write models
+7. **API Gateway** - Single entry point for all services
+8. **Observability** - Logging, metrics, and tracing
+
+---
+
+**Created for**: EDA-MQTT Interview Preparation  
+**Technology Stack**: .NET 8, MQTT, Docker, Minimal APIs  
+**Pattern**: Event-Driven Architecture with Pub-Sub
+
+Good luck with your interviews! ??

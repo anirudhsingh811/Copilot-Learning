@@ -1,0 +1,451 @@
+﻿using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Polly;
+using Polly.Extensions.Http;
+using StackExchange.Redis;
+
+namespace AZ204.AppService;
+
+/// <summary>
+/// Enterprise-grade App Service configuration with best practices
+/// </summary>
+public class AppServiceConfiguration
+{
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<AppServiceConfiguration> _logger;
+    private readonly TelemetryClient _telemetryClient;
+
+    public AppServiceConfiguration(
+        IConfiguration configuration,
+        ILogger<AppServiceConfiguration> logger,
+        TelemetryClient telemetryClient)
+    {
+        _configuration = configuration;
+        _logger = logger;
+        _telemetryClient = telemetryClient;
+    }
+
+    /// <summary>
+    /// Configure enterprise services with Key Vault, Redis, and resilience policies
+    /// </summary>
+    public static IServiceCollection ConfigureEnterpriseServices(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        // 1. Application Insights with custom telemetry (optional for console apps)
+        var appInsightsConnectionString = configuration["ApplicationInsights:ConnectionString"];
+        if (!string.IsNullOrEmpty(appInsightsConnectionString))
+        {
+            // Note: Application Insights is configured but telemetry client will be created manually
+            // For production console apps, consider using Microsoft.ApplicationInsights.WorkerService package
+            services.AddSingleton<ITelemetryInitializer, CustomTelemetryInitializer>();
+        }
+        
+        // Always register a TelemetryClient for demo purposes
+        services.AddSingleton(sp =>
+        {
+            var telemetryConfig = new TelemetryConfiguration();
+            if (!string.IsNullOrEmpty(appInsightsConnectionString) && appInsightsConnectionString.Contains('='))
+            {
+                try
+                {
+                    telemetryConfig.ConnectionString = appInsightsConnectionString;
+                }
+                catch
+                {
+                    // If connection string is invalid, just use default config
+                    // This is fine for demo/study purposes
+                }
+            }
+            return new TelemetryClient(telemetryConfig);
+        });
+
+        // 2. Azure Key Vault integration with Managed Identity
+        var keyVaultUri = configuration["KeyVault:Uri"];
+        if (!string.IsNullOrEmpty(keyVaultUri))
+        {
+            services.AddSingleton<SecretClient>(sp =>
+            {
+                var credential = new DefaultAzureCredential();
+                return new SecretClient(new Uri(keyVaultUri), credential);
+            });
+        }
+
+        // 3. Distributed caching with Redis
+        var redisConnection = configuration["Redis:ConnectionString"];
+        if (!string.IsNullOrEmpty(redisConnection))
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnection;
+                options.InstanceName = configuration["Redis:InstanceName"] ?? "AppService_";
+            });
+
+            services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                var configOptions = ConfigurationOptions.Parse(redisConnection);
+                configOptions.AbortOnConnectFail = false;
+                configOptions.ConnectRetry = 3;
+                configOptions.ConnectTimeout = 5000;
+                return ConnectionMultiplexer.Connect(configOptions);
+            });
+        }
+        else
+        {
+            // Note: Distributed cache not configured - Redis connection string required
+            // For demo purposes, we'll skip the cache registration to avoid version conflicts
+            // services.AddDistributedMemoryCache(); // Commented out due to .NET 9 compatibility
+        }
+
+        // 4. Health checks
+        var healthChecksBuilder = services.AddHealthChecks()
+            .AddCheck<DatabaseHealthCheck>("database")
+            .AddCheck<ExternalApiHealthCheck>("external_api");
+        
+        // Only add Redis health check if Redis is configured
+        if (!string.IsNullOrEmpty(redisConnection))
+        {
+            healthChecksBuilder.AddCheck<RedisHealthCheck>("redis");
+        }
+
+        // 5. HTTP client with Polly resilience policies
+        services.AddHttpClient("ResilientClient")
+            .AddPolicyHandler(GetRetryPolicy())
+            .AddPolicyHandler(GetCircuitBreakerPolicy())
+            .AddPolicyHandler(GetTimeoutPolicy());
+
+        // 6. Background services
+        services.AddHostedService<MetricsCollectionService>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Retry policy with exponential backoff
+    /// </summary>
+    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .WaitAndRetryAsync(
+                retryCount: 3,
+                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                onRetry: (outcome, timespan, retryCount, context) =>
+                {
+                    Console.WriteLine($"Retry {retryCount} after {timespan.TotalSeconds}s due to {outcome.Exception?.Message ?? outcome.Result.StatusCode.ToString()}");
+                });
+    }
+
+    /// <summary>
+    /// Circuit breaker pattern for fault tolerance
+    /// </summary>
+    private static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .CircuitBreakerAsync(
+                handledEventsAllowedBeforeBreaking: 5,
+                durationOfBreak: TimeSpan.FromSeconds(30),
+                onBreak: (outcome, duration) =>
+                {
+                    Console.WriteLine($"Circuit breaker opened for {duration.TotalSeconds}s");
+                },
+                onReset: () =>
+                {
+                    Console.WriteLine("Circuit breaker reset");
+                });
+    }
+
+    /// <summary>
+    /// Timeout policy to prevent hung requests
+    /// </summary>
+    private static IAsyncPolicy<HttpResponseMessage> GetTimeoutPolicy()
+    {
+        return Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromSeconds(10));
+    }
+
+    /// <summary>
+    /// Load secrets from Azure Key Vault
+    /// </summary>
+    public async Task<Dictionary<string, string>> LoadSecretsFromKeyVaultAsync()
+    {
+        var secrets = new Dictionary<string, string>();
+
+        try
+        {
+            // Debug: Log all configuration keys
+            _logger.LogInformation("DEBUG: Checking configuration...");
+            var allKeys = _configuration.AsEnumerable().Select(x => x.Key).ToList();
+            _logger.LogInformation("DEBUG: Total configuration keys found: {Count}", allKeys.Count);
+            
+            var keyVaultUri = _configuration["KeyVault:Uri"];
+            _logger.LogInformation("DEBUG: KeyVault:Uri value = '{Value}'", keyVaultUri ?? "(null)");
+            
+            if (string.IsNullOrEmpty(keyVaultUri))
+            {
+                _logger.LogWarning("Key Vault URI not configured");
+                _logger.LogWarning("Available KeyVault config keys: {Keys}", 
+                    string.Join(", ", allKeys.Where(k => k.StartsWith("KeyVault"))));
+                return secrets;
+            }
+
+            _logger.LogInformation("Attempting to connect to Key Vault: {KeyVaultUri}", keyVaultUri);
+
+            // Create credential with better error handling
+            DefaultAzureCredential credential;
+            try
+            {
+                var credentialOptions = new DefaultAzureCredentialOptions
+                {
+                    ExcludeEnvironmentCredential = false,
+                    ExcludeVisualStudioCredential = false,
+                    ExcludeVisualStudioCodeCredential = false,
+                    ExcludeAzureCliCredential = false,
+                    ExcludeAzurePowerShellCredential = false,
+                    ExcludeInteractiveBrowserCredential = false,
+                    ExcludeManagedIdentityCredential = false
+                };
+                credential = new DefaultAzureCredential(credentialOptions);
+                _logger.LogInformation("Azure credential created successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create Azure credential");
+                throw new InvalidOperationException("Failed to create Azure credentials. Please ensure you're logged in via Azure CLI, Visual Studio, or have environment variables set.", ex);
+            }
+
+            var client = new SecretClient(new Uri(keyVaultUri), credential);
+            _logger.LogInformation("SecretClient created successfully");
+
+            var secretNames = new[] { "DatabaseConnectionString", "ApiKey", "StorageAccountKey" };
+
+            foreach (var secretName in secretNames)
+            {
+                try
+                {
+                    _logger.LogInformation("Attempting to load secret: {SecretName}", secretName);
+                    var secret = await client.GetSecretAsync(secretName);
+                    secrets[secretName] = secret.Value.Value;
+                    _logger.LogInformation("✅ Successfully loaded secret: {SecretName}", secretName);
+                }
+                catch (Azure.RequestFailedException ex) when (ex.Status == 404)
+                {
+                    _logger.LogWarning("Secret not found in Key Vault: {SecretName}", secretName);
+                }
+                catch (Azure.RequestFailedException ex) when (ex.Status == 403)
+                {
+                    _logger.LogError("Access denied to secret: {SecretName}. Please check Key Vault permissions.", secretName);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to load secret: {SecretName}", secretName);
+                }
+            }
+
+            if (secrets.Count > 0)
+            {
+                _telemetryClient.TrackEvent("SecretsLoaded", new Dictionary<string, string>
+                {
+                    { "SecretCount", secrets.Count.ToString() }
+                });
+            }
+        }
+        catch (Azure.Identity.AuthenticationFailedException ex)
+        {
+            _logger.LogError(ex, "❌ Authentication failed. Please login using one of these methods:");
+            _logger.LogError("   1. Azure CLI: Run 'az login'");
+            _logger.LogError("   2. Visual Studio: Tools -> Options -> Azure Service Authentication");
+            _logger.LogError("   3. Environment Variables: Set AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET");
+            throw new InvalidOperationException("Azure authentication failed. See logs for details.", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Failed to load secrets from Key Vault: {Message}", ex.Message);
+            throw;
+        }
+
+        return secrets;
+    }
+}
+
+/// <summary>
+/// Custom telemetry initializer for Application Insights
+/// </summary>
+public class CustomTelemetryInitializer : ITelemetryInitializer
+{
+    public void Initialize(ITelemetry telemetry)
+    {
+        telemetry.Context.Cloud.RoleName = "AppService";
+        telemetry.Context.GlobalProperties["Environment"] = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+        telemetry.Context.GlobalProperties["MachineName"] = Environment.MachineName;
+    }
+}
+
+/// <summary>
+/// Database health check
+/// </summary>
+public class DatabaseHealthCheck : IHealthCheck
+{
+    private readonly ILogger<DatabaseHealthCheck> _logger;
+
+    public DatabaseHealthCheck(ILogger<DatabaseHealthCheck> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Simulate database check
+            await Task.Delay(100, cancellationToken);
+            
+            // In production, check actual database connection
+            // using (var connection = new SqlConnection(connectionString))
+            // {
+            //     await connection.OpenAsync(cancellationToken);
+            //     return HealthCheckResult.Healthy("Database is healthy");
+            // }
+
+            return HealthCheckResult.Healthy("Database is healthy");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Database health check failed");
+            return HealthCheckResult.Unhealthy("Database is unhealthy", ex);
+        }
+    }
+}
+
+/// <summary>
+/// Redis health check
+/// </summary>
+public class RedisHealthCheck : IHealthCheck
+{
+    private readonly IConnectionMultiplexer _redis;
+    private readonly ILogger<RedisHealthCheck> _logger;
+
+    public RedisHealthCheck(
+        IConnectionMultiplexer redis,
+        ILogger<RedisHealthCheck> logger)
+    {
+        _redis = redis;
+        _logger = logger;
+    }
+
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var db = _redis.GetDatabase();
+            await db.PingAsync();
+            return HealthCheckResult.Healthy("Redis is healthy");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Redis health check failed");
+            return HealthCheckResult.Unhealthy("Redis is unhealthy", ex);
+        }
+    }
+}
+
+/// <summary>
+/// External API health check
+/// </summary>
+public class ExternalApiHealthCheck : IHealthCheck
+{
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<ExternalApiHealthCheck> _logger;
+
+    public ExternalApiHealthCheck(
+        IHttpClientFactory httpClientFactory,
+        ILogger<ExternalApiHealthCheck> logger)
+    {
+        _httpClientFactory = httpClientFactory;
+        _logger = logger;
+    }
+
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            var response = await client.GetAsync("https://api.example.com/health", cancellationToken);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return HealthCheckResult.Healthy("External API is healthy");
+            }
+
+            return HealthCheckResult.Degraded($"External API returned {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "External API health check failed");
+            return HealthCheckResult.Unhealthy("External API is unhealthy", ex);
+        }
+    }
+}
+
+/// <summary>
+/// Background service for collecting custom metrics
+/// </summary>
+public class MetricsCollectionService : BackgroundService
+{
+    private readonly ILogger<MetricsCollectionService> _logger;
+    private readonly TelemetryClient _telemetryClient;
+
+    public MetricsCollectionService(
+        ILogger<MetricsCollectionService> logger,
+        TelemetryClient telemetryClient)
+    {
+        _logger = logger;
+        _telemetryClient = telemetryClient;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Metrics collection service started");
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                // Collect custom metrics
+                var memoryUsed = GC.GetTotalMemory(false) / 1024 / 1024; // MB
+                _telemetryClient.GetMetric("MemoryUsageMB").TrackValue(memoryUsed);
+
+                var threadCount = System.Diagnostics.Process.GetCurrentProcess().Threads.Count;
+                _telemetryClient.GetMetric("ThreadCount").TrackValue(threadCount);
+
+                _logger.LogDebug("Metrics collected - Memory: {Memory}MB, Threads: {Threads}", 
+                    memoryUsed, threadCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error collecting metrics");
+            }
+
+            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+        }
+
+        _logger.LogInformation("Metrics collection service stopped");
+    }
+}

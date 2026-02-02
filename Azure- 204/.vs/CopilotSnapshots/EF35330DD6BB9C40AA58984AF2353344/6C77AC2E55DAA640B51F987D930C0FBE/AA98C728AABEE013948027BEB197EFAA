@@ -1,0 +1,281 @@
+﻿using Azure.Identity;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Resources;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
+namespace AZ204.Security.Services;
+
+public class ManagedIdentityService
+{
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<ManagedIdentityService> _logger;
+
+    public ManagedIdentityService(IConfiguration configuration, ILogger<ManagedIdentityService> logger)
+    {
+        _configuration = configuration;
+        _logger = logger;
+    }
+
+    public async Task RunManagedIdentityDemoAsync()
+    {
+        try
+        {
+            _logger.LogInformation("=== Managed Identity Demo ===");
+            Console.WriteLine("\n=== Managed Identity Demo ===\n");
+
+            Console.WriteLine("📚 Understanding Managed Identities:\n");
+            Console.WriteLine("Managed Identities provide an automatically managed identity in Azure AD");
+            Console.WriteLine("for applications to use when connecting to resources that support Azure AD authentication.\n");
+
+            Console.WriteLine("Types of Managed Identities:");
+            Console.WriteLine("  1. System-Assigned: Lifecycle tied to the Azure resource");
+            Console.WriteLine("  2. User-Assigned: Standalone identity that can be assigned to multiple resources\n");
+
+            await SystemAssignedIdentityDemo();
+            await UserAssignedIdentityDemo();
+            await DefaultAzureCredentialDemo();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error running Managed Identity demo");
+            Console.WriteLine($"\n❌ Error: {ex.Message}");
+        }
+    }
+
+    private async Task SystemAssignedIdentityDemo()
+    {
+        Console.WriteLine("🔹 System-Assigned Managed Identity\n");
+
+        try
+        {
+            Console.WriteLine("System-assigned managed identity characteristics:");
+            Console.WriteLine("  ✓ Automatically created and managed by Azure");
+            Console.WriteLine("  ✓ Tied to the lifecycle of the Azure resource");
+            Console.WriteLine("  ✓ Deleted when the resource is deleted");
+            Console.WriteLine("  ✓ Cannot be shared across multiple resources\n");
+
+            Console.WriteLine("Usage example:");
+            Console.WriteLine(@"
+// In Azure App Service, Function App, VM, etc.
+var credential = new ManagedIdentityCredential();
+
+// Use with Azure SDK clients
+var secretClient = new SecretClient(vaultUri, credential);
+var blobClient = new BlobServiceClient(storageUri, credential);
+");
+
+            // Demonstrate detection
+            Console.WriteLine("Checking if running in Azure environment with managed identity...");
+            
+            var identityEndpoint = Environment.GetEnvironmentVariable("IDENTITY_ENDPOINT");
+            var identityHeader = Environment.GetEnvironmentVariable("IDENTITY_HEADER");
+            var msiEndpoint = Environment.GetEnvironmentVariable("MSI_ENDPOINT");
+
+            if (!string.IsNullOrEmpty(identityEndpoint) || !string.IsNullOrEmpty(msiEndpoint))
+            {
+                Console.WriteLine("✅ Managed Identity environment detected!");
+                Console.WriteLine($"   Identity Endpoint: {identityEndpoint ?? msiEndpoint}");
+                
+                // Try to get a token
+                try
+                {
+                    var credential = new ManagedIdentityCredential();
+                    var token = await credential.GetTokenAsync(
+                        new Azure.Core.TokenRequestContext(new[] { "https://management.azure.com/.default" }));
+                    
+                    Console.WriteLine($"✅ Successfully acquired token using Managed Identity");
+                    Console.WriteLine($"   Token expires: {token.ExpiresOn}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️  Could not acquire token: {ex.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("⚠️  Not running in Azure managed identity environment");
+                Console.WriteLine("   This demo needs to run in:");
+                Console.WriteLine("   - Azure App Service");
+                Console.WriteLine("   - Azure Functions");
+                Console.WriteLine("   - Azure Virtual Machine");
+                Console.WriteLine("   - Azure Container Instances");
+                Console.WriteLine("   - Azure Kubernetes Service");
+            }
+
+            Console.WriteLine("\n");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in system-assigned identity demo");
+            Console.WriteLine($"❌ Error: {ex.Message}\n");
+        }
+    }
+
+    private async Task UserAssignedIdentityDemo()
+    {
+        Console.WriteLine("🔹 User-Assigned Managed Identity\n");
+
+        try
+        {
+            Console.WriteLine("User-assigned managed identity characteristics:");
+            Console.WriteLine("  ✓ Created as standalone Azure resource");
+            Console.WriteLine("  ✓ Independent lifecycle from resources that use it");
+            Console.WriteLine("  ✓ Can be shared across multiple resources");
+            Console.WriteLine("  ✓ More control and flexibility\n");
+
+            Console.WriteLine("Usage example:");
+            Console.WriteLine(@"
+// Specify the Client ID of the user-assigned identity
+var credential = new ManagedIdentityCredential(""<client-id-of-user-assigned-identity>"");
+
+// Or use DefaultAzureCredential which will detect it automatically
+var credential = new DefaultAzureCredential();
+");
+
+            Console.WriteLine("Creating a user-assigned identity via Azure CLI:");
+            Console.WriteLine(@"
+az identity create \
+  --name myUserAssignedIdentity \
+  --resource-group myResourceGroup
+
+# Assign it to a resource (e.g., VM)
+az vm identity assign \
+  --name myVM \
+  --resource-group myResourceGroup \
+  --identities /subscriptions/{subscription-id}/resourcegroups/{resource-group}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myUserAssignedIdentity
+");
+
+            // Check for user-assigned identity
+            var identityClientId = Environment.GetEnvironmentVariable("AZURE_CLIENT_ID");
+            
+            if (!string.IsNullOrEmpty(identityClientId))
+            {
+                Console.WriteLine($"\n✅ User-Assigned Identity detected!");
+                Console.WriteLine($"   Client ID: {identityClientId}");
+
+                try
+                {
+                    var credential = new ManagedIdentityCredential(identityClientId);
+                    var token = await credential.GetTokenAsync(
+                        new Azure.Core.TokenRequestContext(new[] { "https://management.azure.com/.default" }));
+                    
+                    Console.WriteLine($"✅ Successfully acquired token using User-Assigned Managed Identity");
+                    Console.WriteLine($"   Token expires: {token.ExpiresOn}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️  Could not acquire token: {ex.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("\n⚠️  No user-assigned identity configured");
+            }
+
+            Console.WriteLine("\n");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in user-assigned identity demo");
+            Console.WriteLine($"❌ Error: {ex.Message}\n");
+        }
+    }
+
+    private async Task DefaultAzureCredentialDemo()
+    {
+        Console.WriteLine("🎯 DefaultAzureCredential (Recommended)\n");
+
+        try
+        {
+            Console.WriteLine("DefaultAzureCredential automatically tries multiple authentication methods:");
+            Console.WriteLine("  1. EnvironmentCredential - Environment variables");
+            Console.WriteLine("  2. ManagedIdentityCredential - Managed Identity");
+            Console.WriteLine("  3. SharedTokenCacheCredential - Cached tokens");
+            Console.WriteLine("  4. VisualStudioCredential - Visual Studio");
+            Console.WriteLine("  5. VisualStudioCodeCredential - VS Code");
+            Console.WriteLine("  6. AzureCliCredential - Azure CLI");
+            Console.WriteLine("  7. AzurePowerShellCredential - Azure PowerShell");
+            Console.WriteLine("  8. InteractiveBrowserCredential - Browser (last resort)\n");
+
+            Console.WriteLine("This provides seamless authentication across:");
+            Console.WriteLine("  ✓ Local development (using Azure CLI, Visual Studio, etc.)");
+            Console.WriteLine("  ✓ Azure production (using Managed Identity)");
+            Console.WriteLine("  ✓ CI/CD pipelines (using Service Principal)\n");
+
+            Console.WriteLine("Usage example:");
+            Console.WriteLine(@"
+var credential = new DefaultAzureCredential();
+
+// Works everywhere!
+var secretClient = new SecretClient(vaultUri, credential);
+var blobClient = new BlobServiceClient(storageUri, credential);
+var graphClient = new GraphServiceClient(credential);
+");
+
+            // Try to authenticate using DefaultAzureCredential
+            Console.WriteLine("Attempting authentication with DefaultAzureCredential...");
+
+            try
+            {
+                var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                {
+                    ExcludeInteractiveBrowserCredential = true // Don't pop up browser for this demo
+                });
+
+                var token = await credential.GetTokenAsync(
+                    new Azure.Core.TokenRequestContext(new[] { "https://management.azure.com/.default" }));
+                
+                Console.WriteLine($"\n✅ Successfully authenticated using DefaultAzureCredential!");
+                Console.WriteLine($"   Token expires: {token.ExpiresOn}");
+                Console.WriteLine($"   This means one of the credential sources is working.");
+
+                // Try to list resource groups as a test
+                var subscriptionId = _configuration["Azure:SubscriptionId"];
+                if (!string.IsNullOrEmpty(subscriptionId))
+                {
+                    Console.WriteLine($"\nTesting access to Azure Resource Manager...");
+                    var armClient = new ArmClient(credential);
+                    var subscription = armClient.GetSubscriptionResource(
+                        Azure.Core.ResourceIdentifier.Parse($"/subscriptions/{subscriptionId}"));
+                    
+                    Console.WriteLine($"✅ Successfully connected to subscription");
+                    
+                    Console.WriteLine("\nListing resource groups:");
+                    var resourceGroups = subscription.GetResourceGroups();
+                    int count = 0;
+                    await foreach (var rg in resourceGroups)
+                    {
+                        count++;
+                        Console.WriteLine($"   {count}. {rg.Data.Name} ({rg.Data.Location})");
+                        if (count >= 5) break; // Limit to 5
+                    }
+
+                    if (count == 0)
+                    {
+                        Console.WriteLine("   No resource groups found");
+                    }
+                }
+            }
+            catch (Azure.Identity.CredentialUnavailableException ex)
+            {
+                Console.WriteLine($"\n⚠️  No credentials available: {ex.Message}");
+                Console.WriteLine("\n💡 To use DefaultAzureCredential locally:");
+                Console.WriteLine("   1. Install Azure CLI: https://aka.ms/install-azure-cli");
+                Console.WriteLine("   2. Run: az login");
+                Console.WriteLine("   3. Run this application again");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n⚠️  Authentication failed: {ex.Message}");
+            }
+
+            Console.WriteLine("\n");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in DefaultAzureCredential demo");
+            Console.WriteLine($"❌ Error: {ex.Message}\n");
+        }
+    }
+}

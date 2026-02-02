@@ -1,0 +1,66 @@
+﻿<UserControl x:Class="WPF_APP.Views.AsyncDemoView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="Async Operations Demo" FontSize="24" FontWeight="Bold" Margin="0,0,0,20"/>
+        
+        <TextBlock Text="Key Concepts:" FontWeight="Bold" Margin="0,0,0,10"/>
+        <TextBlock TextWrapping="Wrap" Margin="0,0,0,20">
+            - async/await pattern<LineBreak/>
+            - Task-based operations<LineBreak/>
+            - Cancellation tokens<LineBreak/>
+            - UI thread synchronization (Dispatcher)<LineBreak/>
+            - Progress reporting<LineBreak/>
+            - Exception handling in async methods
+        </TextBlock>
+        
+        <TextBlock Text="Best Practices:" FontWeight="Bold" Margin="0,0,0,10"/>
+        <TextBlock TextWrapping="Wrap" Margin="0,0,0,20">
+            - Use async/await for I/O operations<LineBreak/>
+            - Always use ConfigureAwait(false) in libraries<LineBreak/>
+            - Handle exceptions properly<LineBreak/>
+            - Support cancellation for long operations<LineBreak/>
+            - Update UI on UI thread (Dispatcher not needed with proper async)<LineBreak/>
+            - Don't block on async code (avoid .Result or .Wait())
+        </TextBlock>
+        
+        <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock Text="Simple Async Operation" FontWeight="Bold" Margin="0,0,0,10"/>
+                <Button Content="Start Async Task" Command="{Binding StartAsyncCommand}"
+                       Style="{StaticResource ModernButtonStyle}" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+        
+        <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock Text="Long Running with Cancellation" FontWeight="Bold" Margin="0,0,0,10"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Start Long Task" Command="{Binding StartLongRunningCommand}"
+                           Style="{StaticResource ModernButtonStyle}"/>
+                    <Button Content="Cancel" Command="{Binding CancelCommand}"
+                           Style="{StaticResource ModernButtonStyle}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        
+        <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock Text="Progress" FontWeight="Bold" Margin="0,0,0,10"/>
+                <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="100" 
+                            Height="30" Margin="0,0,0,10"/>
+                <TextBlock Text="{Binding Progress, StringFormat='{}Progress: {0}%'}" 
+                          HorizontalAlignment="Center" FontSize="16"/>
+            </StackPanel>
+        </Border>
+        
+        <Border BorderBrush="#007ACC" BorderThickness="2" Background="#F0F8FF" Padding="15">
+            <StackPanel>
+                <TextBlock Text="Status:" FontWeight="Bold" Margin="0,0,0,5"/>
+                <TextBlock Text="{Binding Status}" FontSize="16" Foreground="#007ACC" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>
+
+

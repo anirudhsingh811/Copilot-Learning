@@ -1,0 +1,14 @@
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\bin\Debug\net10.0\WSL-Windows.exe
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\bin\Debug\net10.0\WSL-Windows.deps.json
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\bin\Debug\net10.0\WSL-Windows.runtimeconfig.json
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\bin\Debug\net10.0\WSL-Windows.dll
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\bin\Debug\net10.0\WSL-Windows.pdb
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\obj\Debug\net10.0\WSL-Windows.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\obj\Debug\net10.0\WSL-Windows.AssemblyInfoInputs.cache
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\obj\Debug\net10.0\WSL-Windows.AssemblyInfo.cs
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\obj\Debug\net10.0\WSL-Windows.csproj.CoreCompileInputs.cache
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\obj\Debug\net10.0\WSL-Windows.dll
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\obj\Debug\net10.0\refint\WSL-Windows.dll
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\obj\Debug\net10.0\WSL-Windows.pdb
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\obj\Debug\net10.0\WSL-Windows.genruntimeconfig.cache
+C:\Users\INASING7\source\repos\WSL-Windows\WSL-Windows\obj\Debug\net10.0\ref\WSL-Windows.dll

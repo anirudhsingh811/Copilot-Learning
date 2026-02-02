@@ -1,0 +1,532 @@
+﻿using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+using Azure.Storage.Blobs;
+using Azure.Messaging.ServiceBus;
+using Azure.Data.Tables;
+using System.Text.Json;
+
+namespace AZ204.Functions;
+
+/// <summary>
+/// Event-driven serverless patterns with Azure Functions
+/// Implements: Event Sourcing, CQRS, Retry policies, Dead-letter handling
+/// </summary>
+public class EventDrivenFunctions
+{
+    private readonly ILogger<EventDrivenFunctions> _logger;
+    private static readonly HttpClient _httpClient = new();
+
+    public EventDrivenFunctions(ILogger<EventDrivenFunctions> logger)
+    {
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Blob Trigger with error handling and poison queue
+    /// Use Case: Image processing pipeline
+    /// </summary>
+    [Function(nameof(ProcessImageUpload))]
+    [FixedDelayRetry(3, "00:00:05")]
+    public async Task ProcessImageUpload(
+        [BlobTrigger("uploads/{name}", Connection = "StorageConnection")] 
+        Stream imageStream,
+        string name,
+        [BlobInput("processed/{name}", Connection = "StorageConnection")]
+        BlobClient processedBlob,
+        [QueueOutput("image-processing-poison", Connection = "StorageConnection")]
+        IAsyncCollector<string> poisonQueue)
+    {
+        _logger.LogInformation("Processing image: {ImageName}, Size: {Size}KB", 
+            name, imageStream.Length / 1024);
+
+        try
+        {
+            // Validate image
+            if (!IsValidImage(name))
+            {
+                _logger.LogWarning("Invalid image format: {ImageName}", name);
+                await poisonQueue.AddAsync(JsonSerializer.Serialize(new
+                {
+                    FileName = name,
+                    Reason = "Invalid format",
+                    Timestamp = DateTime.UtcNow
+                }));
+                return;
+            }
+
+            // Process image (resize, optimize, generate thumbnails)
+            using var processedStream = await ProcessImageAsync(imageStream);
+
+            // Upload processed image
+            await processedBlob.UploadAsync(processedStream, overwrite: true);
+
+            _logger.LogInformation("Successfully processed image: {ImageName}", name);
+
+            // Trigger downstream processing
+            // Example: Update database, send notification, generate metadata
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing image: {ImageName}", name);
+            
+            // On final retry failure, message goes to poison queue automatically
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Service Bus Queue Trigger with session handling
+    /// Use Case: Order processing with guaranteed ordering per customer
+    /// </summary>
+    [Function(nameof(ProcessOrderMessage))]
+    public async Task ProcessOrderMessage(
+        [ServiceBusTrigger("orders", Connection = "ServiceBusConnection", IsSessionsEnabled = true)]
+        ServiceBusReceivedMessage message,
+        ServiceBusMessageActions messageActions,
+        [ServiceBusOutput("order-events", Connection = "ServiceBusConnection")]
+        IAsyncCollector<ServiceBusMessage> eventBus)
+    {
+        var orderId = message.Subject ?? "unknown";
+        var sessionId = message.SessionId;
+
+        _logger.LogInformation(
+            "Processing order message - OrderId: {OrderId}, SessionId: {SessionId}, DeliveryCount: {DeliveryCount}",
+            orderId, sessionId, message.DeliveryCount);
+
+        try
+        {
+            var orderData = JsonSerializer.Deserialize<OrderMessage>(message.Body.ToString());
+
+            if (orderData == null)
+            {
+                _logger.LogWarning("Invalid message format for OrderId: {OrderId}", orderId);
+                await messageActions.DeadLetterMessageAsync(
+                    message,
+                    deadLetterReason: "InvalidFormat",
+                    deadLetterErrorDescription: "Unable to deserialize message");
+                return;
+            }
+
+            // Business logic validation
+            if (orderData.Amount <= 0)
+            {
+                _logger.LogWarning("Invalid order amount for OrderId: {OrderId}", orderId);
+                await messageActions.DeadLetterMessageAsync(
+                    message,
+                    deadLetterReason: "InvalidAmount",
+                    deadLetterErrorDescription: "Order amount must be greater than zero");
+                return;
+            }
+
+            // Process order
+            await ProcessOrderAsync(orderData);
+
+            // Publish domain events
+            var orderProcessedEvent = new ServiceBusMessage(
+                JsonSerializer.Serialize(new OrderProcessedEvent
+                {
+                    OrderId = orderData.OrderId,
+                    CustomerId = orderData.CustomerId,
+                    ProcessedAt = DateTime.UtcNow,
+                    Status = "Completed"
+                }))
+            {
+                Subject = "OrderProcessed",
+                SessionId = sessionId,
+                MessageId = Guid.NewGuid().ToString(),
+                ContentType = "application/json"
+            };
+
+            await eventBus.AddAsync(orderProcessedEvent);
+
+            // Complete the message
+            await messageActions.CompleteMessageAsync(message);
+
+            _logger.LogInformation("Successfully processed order: {OrderId}", orderId);
+        }
+        catch (BusinessValidationException ex)
+        {
+            _logger.LogWarning(ex, "Business validation failed for OrderId: {OrderId}", orderId);
+            
+            // Dead letter for business logic failures
+            await messageActions.DeadLetterMessageAsync(
+                message,
+                deadLetterReason: "BusinessValidationFailed",
+                deadLetterErrorDescription: ex.Message);
+        }
+        catch (TransientException ex)
+        {
+            _logger.LogWarning(ex, "Transient error processing OrderId: {OrderId}, will retry", orderId);
+            
+            // Abandon message for retry (max 10 times by default)
+            if (message.DeliveryCount < 5)
+            {
+                await messageActions.AbandonMessageAsync(message);
+            }
+            else
+            {
+                await messageActions.DeadLetterMessageAsync(
+                    message,
+                    deadLetterReason: "MaxRetryExceeded",
+                    deadLetterErrorDescription: $"Failed after {message.DeliveryCount} attempts");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error processing OrderId: {OrderId}", orderId);
+            throw; // Let the function runtime handle it
+        }
+    }
+
+    /// <summary>
+    /// Timer Trigger for scheduled batch processing
+    /// Use Case: Daily report generation, cleanup jobs
+    /// </summary>
+    [Function(nameof(DailyCleanupJob))]
+    public async Task DailyCleanupJob(
+        [TimerTrigger("0 0 2 * * *")] TimerInfo timerInfo, // Run at 2 AM daily
+        [TableInput("ProcessedRecords", Connection = "StorageConnection")]
+        TableClient tableClient,
+        FunctionContext context)
+    {
+        _logger.LogInformation("Daily cleanup job started at {Time}", DateTime.UtcNow);
+
+        var cutoffDate = DateTime.UtcNow.AddDays(-30);
+        var deletedCount = 0;
+
+        try
+        {
+            // Query old records
+            var query = tableClient.QueryAsync<ProcessedRecord>(
+                filter: $"Timestamp lt datetime'{cutoffDate:yyyy-MM-ddTHH:mm:ssZ}'",
+                maxPerPage: 100);
+
+            await foreach (var page in query.AsPages())
+            {
+                foreach (var record in page.Values)
+                {
+                    try
+                    {
+                        await tableClient.DeleteEntityAsync(
+                            record.PartitionKey,
+                            record.RowKey);
+                        deletedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, 
+                            "Failed to delete record {PartitionKey}/{RowKey}",
+                            record.PartitionKey, record.RowKey);
+                    }
+                }
+            }
+
+            _logger.LogInformation(
+                "Cleanup job completed. Deleted {Count} records older than {CutoffDate}",
+                deletedCount, cutoffDate);
+
+            // Log metrics to Application Insights
+            var telemetryClient = context.GetTelemetryClient();
+            telemetryClient?.GetMetric("CleanupJob.DeletedRecords").TrackValue(deletedCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Cleanup job failed");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Event Grid Trigger for reactive processing
+    /// Use Case: React to Azure resource changes, blob events
+    /// </summary>
+    [Function(nameof(HandleBlobEvent))]
+    public async Task HandleBlobEvent(
+        [EventGridTrigger] EventGridEvent eventGridEvent,
+        [TableOutput("BlobEvents", Connection = "StorageConnection")]
+        IAsyncCollector<BlobEventRecord> eventTable)
+    {
+        _logger.LogInformation(
+            "Event Grid event received - Type: {EventType}, Subject: {Subject}",
+            eventGridEvent.EventType, eventGridEvent.Subject);
+
+        if (eventGridEvent.EventType == "Microsoft.Storage.BlobCreated")
+        {
+            var blobUrl = eventGridEvent.Subject;
+            var eventData = JsonSerializer.Deserialize<BlobCreatedEventData>(
+                eventGridEvent.Data.ToString() ?? "{}");
+
+            // Store event for audit trail
+            await eventTable.AddAsync(new BlobEventRecord
+            {
+                PartitionKey = DateTime.UtcNow.ToString("yyyyMMdd"),
+                RowKey = Guid.NewGuid().ToString(),
+                EventType = eventGridEvent.EventType,
+                BlobUrl = blobUrl,
+                ContentLength = eventData?.ContentLength ?? 0,
+                ContentType = eventData?.ContentType ?? "unknown",
+                EventTime = eventGridEvent.EventTime
+            });
+
+            // Trigger downstream processing based on blob type
+            if (eventData?.ContentType?.StartsWith("image/") == true)
+            {
+                await TriggerImageProcessingAsync(blobUrl);
+            }
+            else if (eventData?.ContentType == "application/pdf")
+            {
+                await TriggerPdfProcessingAsync(blobUrl);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Cosmos DB Change Feed Trigger for event sourcing
+    /// Use Case: CQRS pattern, materialized views, real-time analytics
+    /// </summary>
+    [Function(nameof(ProcessCosmosChanges))]
+    public async Task ProcessCosmosChanges(
+        [CosmosDBTrigger(
+            databaseName: "OrdersDB",
+            collectionName: "Orders",
+            ConnectionStringSetting = "CosmosDBConnection",
+            LeaseCollectionName = "leases",
+            CreateLeaseCollectionIfNotExists = true,
+            FeedPollDelay = 1000,
+            MaxItemsPerInvocation = 100)]
+        IReadOnlyList<OrderDocument> changes,
+        [CosmosDBOutput(
+            databaseName: "OrdersDB",
+            collectionName: "OrderEvents",
+            ConnectionStringSetting = "CosmosDBConnection")]
+        IAsyncCollector<OrderEvent> eventStore)
+    {
+        _logger.LogInformation("Processing {Count} document changes", changes.Count);
+
+        foreach (var order in changes)
+        {
+            _logger.LogInformation(
+                "Change detected - OrderId: {OrderId}, Status: {Status}",
+                order.Id, order.Status);
+
+            // Create event for event store (Event Sourcing pattern)
+            var orderEvent = new OrderEvent
+            {
+                Id = Guid.NewGuid().ToString(),
+                OrderId = order.Id,
+                EventType = DetermineEventType(order),
+                EventData = JsonSerializer.Serialize(order),
+                Timestamp = DateTime.UtcNow,
+                Version = order.Version
+            };
+
+            await eventStore.AddAsync(orderEvent);
+
+            // Update read models / materialized views
+            await UpdateReadModelAsync(order);
+
+            // Trigger notifications
+            if (order.Status == "Shipped")
+            {
+                await SendShippingNotificationAsync(order);
+            }
+        }
+    }
+
+    /// <summary>
+    /// HTTP Trigger with advanced routing and authentication
+    /// Use Case: API endpoint with OAuth, rate limiting, caching
+    /// </summary>
+    [Function(nameof(GetOrderDetails))]
+    public async Task<HttpResponseData> GetOrderDetails(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/orders/{orderId}")]
+        HttpRequestData req,
+        string orderId,
+        [CosmosDBInput(
+            databaseName: "OrdersDB",
+            collectionName: "Orders",
+            ConnectionStringSetting = "CosmosDBConnection",
+            Id = "{orderId}",
+            PartitionKey = "{orderId}")]
+        OrderDocument? order)
+    {
+        // Check authorization
+        if (!await IsAuthorizedAsync(req, orderId))
+        {
+            var unauthorizedResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+            await unauthorizedResponse.WriteStringAsync("Unauthorized access");
+            return unauthorizedResponse;
+        }
+
+        if (order == null)
+        {
+            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+            await notFoundResponse.WriteStringAsync($"Order {orderId} not found");
+            return notFoundResponse;
+        }
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        response.Headers.Add("Content-Type", "application/json");
+        response.Headers.Add("Cache-Control", "private, max-age=300"); // 5 minutes
+        
+        await response.WriteAsJsonAsync(new
+        {
+            order.Id,
+            order.CustomerId,
+            order.Status,
+            order.TotalAmount,
+            order.CreatedAt,
+            Items = order.Items
+        });
+
+        return response;
+    }
+
+    // Helper methods
+    private bool IsValidImage(string fileName)
+    {
+        var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
+        return validExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task<Stream> ProcessImageAsync(Stream inputStream)
+    {
+        // Image processing logic: resize, optimize, etc.
+        var outputStream = new MemoryStream();
+        await inputStream.CopyToAsync(outputStream);
+        outputStream.Position = 0;
+        return outputStream;
+    }
+
+    private async Task ProcessOrderAsync(OrderMessage order)
+    {
+        // Business logic for order processing
+        await Task.Delay(100); // Simulate processing
+    }
+
+    private string DetermineEventType(OrderDocument order)
+    {
+        return order.Status switch
+        {
+            "Created" => "OrderCreated",
+            "Processing" => "OrderProcessing",
+            "Shipped" => "OrderShipped",
+            "Delivered" => "OrderDelivered",
+            "Cancelled" => "OrderCancelled",
+            _ => "OrderUpdated"
+        };
+    }
+
+    private async Task UpdateReadModelAsync(OrderDocument order)
+    {
+        // Update materialized view for fast queries
+        await Task.Delay(50);
+    }
+
+    private async Task SendShippingNotificationAsync(OrderDocument order)
+    {
+        _logger.LogInformation("Sending shipping notification for order {OrderId}", order.Id);
+        await Task.Delay(50);
+    }
+
+    private async Task TriggerImageProcessingAsync(string blobUrl)
+    {
+        _logger.LogInformation("Triggering image processing for {BlobUrl}", blobUrl);
+        await Task.Delay(50);
+    }
+
+    private async Task TriggerPdfProcessingAsync(string blobUrl)
+    {
+        _logger.LogInformation("Triggering PDF processing for {BlobUrl}", blobUrl);
+        await Task.Delay(50);
+    }
+
+    private async Task<bool> IsAuthorizedAsync(HttpRequestData req, string orderId)
+    {
+        // Implement JWT validation, OAuth, etc.
+        await Task.Delay(10);
+        return req.Headers.Contains("Authorization");
+    }
+}
+
+// Model classes
+public class OrderMessage
+{
+    public string OrderId { get; set; } = string.Empty;
+    public string CustomerId { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public List<string> Items { get; set; } = new();
+}
+
+public class OrderProcessedEvent
+{
+    public string OrderId { get; set; } = string.Empty;
+    public string CustomerId { get; set; } = string.Empty;
+    public DateTime ProcessedAt { get; set; }
+    public string Status { get; set; } = string.Empty;
+}
+
+public class OrderDocument : ITableEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string CustomerId { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public decimal TotalAmount { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public List<OrderItem> Items { get; set; } = new();
+    public int Version { get; set; }
+    
+    // ITableEntity properties
+    public string PartitionKey { get; set; } = string.Empty;
+    public string RowKey { get; set; } = string.Empty;
+    public DateTimeOffset? Timestamp { get; set; }
+    public ETag ETag { get; set; }
+}
+
+public class OrderEvent
+{
+    public string Id { get; set; } = string.Empty;
+    public string OrderId { get; set; } = string.Empty;
+    public string EventType { get; set; } = string.Empty;
+    public string EventData { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+    public int Version { get; set; }
+}
+
+public class ProcessedRecord : ITableEntity
+{
+    public string PartitionKey { get; set; } = string.Empty;
+    public string RowKey { get; set; } = string.Empty;
+    public DateTimeOffset? Timestamp { get; set; }
+    public ETag ETag { get; set; }
+}
+
+public class BlobEventRecord : ITableEntity
+{
+    public string PartitionKey { get; set; } = string.Empty;
+    public string RowKey { get; set; } = string.Empty;
+    public string EventType { get; set; } = string.Empty;
+    public string BlobUrl { get; set; } = string.Empty;
+    public long ContentLength { get; set; }
+    public string ContentType { get; set; } = string.Empty;
+    public DateTime EventTime { get; set; }
+    public DateTimeOffset? Timestamp { get; set; }
+    public ETag ETag { get; set; }
+}
+
+public class BlobCreatedEventData
+{
+    public long ContentLength { get; set; }
+    public string ContentType { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+}
+
+public class BusinessValidationException : Exception
+{
+    public BusinessValidationException(string message) : base(message) { }
+}
+
+public class TransientException : Exception
+{
+    public TransientException(string message) : base(message) { }
+}

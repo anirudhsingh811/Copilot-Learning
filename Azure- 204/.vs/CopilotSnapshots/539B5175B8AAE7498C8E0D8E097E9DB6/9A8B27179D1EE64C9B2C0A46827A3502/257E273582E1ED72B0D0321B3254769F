@@ -1,0 +1,147 @@
+﻿using Azure.Core;
+using Azure.Identity;
+using Azure.ResourceManager;
+using Azure.ResourceManager.AppService;
+using Azure.ResourceManager.AppService.Models;
+
+namespace YourNamespace.Services;
+
+public class DeploymentSlotService
+{
+    private readonly ArmClient _armClient;
+
+    public DeploymentSlotService(TokenCredential credential)
+    {
+        _armClient = new ArmClient(credential);
+    }
+
+    public DeploymentSlotService()
+        : this(new DefaultAzureCredential())
+    {
+    }
+
+    /// <summary>
+    /// Creates a deployment slot for an App Service
+    /// </summary>
+    public async Task<WebSiteResource> CreateDeploymentSlotAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string appServiceName,
+        string slotName,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = _armClient.GetSubscriptionResource(new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+
+        var webSite = await resourceGroup.Value.GetWebSiteAsync(appServiceName, cancellationToken);
+
+        var slotData = new WebSiteData(webSite.Value.Data.Location)
+        {
+            ServerFarmId = webSite.Value.Data.ServerFarmId,
+            SiteConfig = new SiteConfigProperties
+            {
+                AppSettings = webSite.Value.Data.SiteConfig.AppSettings
+            }
+        };
+
+        var slotCollection = webSite.Value.GetWebSiteSlots();
+        var slot = await slotCollection.CreateOrUpdateAsync(
+            Azure.WaitUntil.Completed,
+            slotName,
+            slotData,
+            cancellationToken);
+
+        return slot.Value;
+    }
+
+    /// <summary>
+    /// Swaps a deployment slot with production
+    /// </summary>
+    public async Task SwapSlotAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string appServiceName,
+        string sourceSlotName,
+        string? targetSlotName = null,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = _armClient.GetSubscriptionResource(new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+
+        var webSite = await resourceGroup.Value.GetWebSiteAsync(appServiceName, cancellationToken);
+
+        var swapParameters = new CsmSlotEntity
+        {
+            TargetSlot = targetSlotName ?? "production",
+            PreserveVnet = true
+        };
+
+        var slot = await webSite.Value.GetWebSiteSlotAsync(sourceSlotName, cancellationToken);
+
+        await slot.Value.SwapSlotAsync(
+            Azure.WaitUntil.Completed,
+            swapParameters,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets information about a deployment slot
+    /// </summary>
+    public async Task<WebSiteResource> GetDeploymentSlotAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string appServiceName,
+        string slotName,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = _armClient.GetSubscriptionResource(new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+
+        var webSite = await resourceGroup.Value.GetWebSiteAsync(appServiceName, cancellationToken);
+        var slot = await webSite.Value.GetWebSiteSlotAsync(slotName, cancellationToken);
+
+        return slot.Value;
+    }
+
+    /// <summary>
+    /// Lists all deployment slots for an App Service
+    /// </summary>
+    public async Task<IReadOnlyList<WebSiteResource>> ListDeploymentSlotsAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string appServiceName,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = _armClient.GetSubscriptionResource(new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+
+        var webSite = await resourceGroup.Value.GetWebSiteAsync(appServiceName, cancellationToken);
+        var slots = new List<WebSiteResource>();
+
+        await foreach (var slot in webSite.Value.GetWebSiteSlots().GetAllAsync(cancellationToken))
+        {
+            slots.Add(slot);
+        }
+
+        return slots;
+    }
+
+    /// <summary>
+    /// Deletes a deployment slot
+    /// </summary>
+    public async Task DeleteDeploymentSlotAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string appServiceName,
+        string slotName,
+        CancellationToken cancellationToken = default)
+    {
+        var subscription = _armClient.GetSubscriptionResource(new ResourceIdentifier($"/subscriptions/{subscriptionId}"));
+        var resourceGroup = await subscription.GetResourceGroupAsync(resourceGroupName, cancellationToken);
+
+        var webSite = await resourceGroup.Value.GetWebSiteAsync(appServiceName, cancellationToken);
+        var slot = await webSite.Value.GetWebSiteSlotAsync(slotName, cancellationToken);
+
+        await slot.Value.DeleteAsync(Azure.WaitUntil.Completed, cancellationToken: cancellationToken);
+    }
+}

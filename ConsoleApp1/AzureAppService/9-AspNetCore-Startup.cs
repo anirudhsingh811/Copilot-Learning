@@ -1,0 +1,115 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Identity.Web;
+using Microsoft.Identity.Web.UI;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+
+namespace AzureAppServiceWebApp
+{
+    /// <summary>
+    /// ASP.NET Core Web App configured for Azure App Service
+    /// with Authentication and Best Practices
+    /// </summary>
+    public class Startup
+    {
+        public Startup(IConfiguration configuration)
+        {
+            Configuration = configuration;
+        }
+
+        public IConfiguration Configuration { get; }
+
+        public void ConfigureServices(IServiceCollection services)
+        {
+            // 1. Add Azure AD Authentication
+            services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+                .AddMicrosoftIdentityWebApp(Configuration.GetSection("AzureAd"));
+
+            // 2. Add Authorization
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("RequireAuthenticatedUser", policy =>
+                    policy.RequireAuthenticatedUser());
+            });
+
+            // 3. Add Session Support (for deployment slots)
+            services.AddSession(options =>
+            {
+                options.IdleTimeout = TimeSpan.FromMinutes(30);
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true;
+                options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+            });
+
+            // 4. Add Health Checks
+            services.AddHealthChecks();
+
+            // 5. Add Application Insights
+            services.AddApplicationInsightsTelemetry(
+                Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]
+            );
+
+            // 6. Add Response Compression
+            services.AddResponseCompression(options =>
+            {
+                options.EnableForHttps = true;
+            });
+
+            // 7. Add Controllers and Views
+            services.AddControllersWithViews()
+                .AddMicrosoftIdentityUI();
+
+            services.AddRazorPages();
+        }
+
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        {
+            // 1. Environment-specific configuration
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+            else
+            {
+                app.UseExceptionHandler("/Home/Error");
+                app.UseHsts();
+            }
+
+            // 2. HTTPS Redirection (App Service handles SSL termination)
+            app.UseHttpsRedirection();
+
+            // 3. Static Files
+            app.UseStaticFiles();
+
+            // 4. Response Compression
+            app.UseResponseCompression();
+
+            // 5. Session
+            app.UseSession();
+
+            // 6. Routing
+            app.UseRouting();
+
+            // 7. Authentication & Authorization
+            app.UseAuthentication();
+            app.UseAuthorization();
+
+            // 8. Endpoints
+            app.UseEndpoints(endpoints =>
+            {
+                // Health Check Endpoint
+                endpoints.MapHealthChecks("/health");
+
+                // Default route
+                endpoints.MapControllerRoute(
+                    name: "default",
+                    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+                endpoints.MapRazorPages();
+            });
+        }
+    }
+}

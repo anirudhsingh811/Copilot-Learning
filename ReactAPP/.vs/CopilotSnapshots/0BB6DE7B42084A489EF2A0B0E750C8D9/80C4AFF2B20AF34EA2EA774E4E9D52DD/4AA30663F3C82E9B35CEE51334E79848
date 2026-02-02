@@ -1,0 +1,113 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to React Learning</h1>
+    <p class="lead">Comprehensive React examples for senior developers with 13+ years of experience</p>
+</div>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">⚛️ React Fundamentals</h5>
+                    <p class="card-text">
+                        Learn core React concepts including:
+                    </p>
+                    <ul class="text-start">
+                        <li>All React Hooks (useState, useEffect, useContext, useReducer, etc.)</li>
+                        <li>Custom Hooks (useFetch, useLocalStorage, useDebounce)</li>
+                        <li>Context API for state management</li>
+                        <li>Performance optimization (React.memo, useMemo, useCallback)</li>
+                        <li>Component patterns (HOC, Render Props, Compound Components)</li>
+                        <li>Todo App with localStorage</li>
+                        <li>Async data fetching</li>
+                    </ul>
+                    <a href="/ReactLearning" class="btn btn-primary">Go to Fundamentals</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">⚡ Advanced Patterns</h5>
+                    <p class="card-text">
+                        Production-ready React patterns:
+                    </p>
+                    <ul class="text-start">
+                        <li>Error Boundaries</li>
+                        <li>Portal Pattern (Modals)</li>
+                        <li>Infinite Scroll with Intersection Observer</li>
+                        <li>Code Splitting & Lazy Loading</li>
+                        <li>Advanced Form Validation</li>
+                        <li>Responsive Design Hooks</li>
+                        <li>Network Status Detection</li>
+                        <li>Window Size & Media Queries</li>
+                    </ul>
+                    <a href="/ReactAdvanced" class="btn btn-success">Go to Advanced</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h5 class="alert-heading">📚 Learning Resources</h5>
+                <p>Check out the <code>wwwroot/react-app/LEARNING_GUIDE.md</code> for:</p>
+                <ul>
+                    <li>Common interview questions and answers</li>
+                    <li>Best practices and coding patterns</li>
+                    <li>TypeScript integration examples</li>
+                    <li>Testing strategies</li>
+                    <li>Architecture patterns</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">🎯 Interview Preparation Tips</h5>
+                    <p>These examples cover everything you need for senior-level React interviews:</p>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6>Core Concepts</h6>
+                            <ul>
+                                <li>Virtual DOM</li>
+                                <li>Reconciliation</li>
+                                <li>Component Lifecycle</li>
+                                <li>State Management</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>Performance</h6>
+                            <ul>
+                                <li>Memoization</li>
+                                <li>Code Splitting</li>
+                                <li>Lazy Loading</li>
+                                <li>Profiling</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>Patterns</h6>
+                            <ul>
+                                <li>HOC</li>
+                                <li>Render Props</li>
+                                <li>Compound Components</li>
+                                <li>Custom Hooks</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

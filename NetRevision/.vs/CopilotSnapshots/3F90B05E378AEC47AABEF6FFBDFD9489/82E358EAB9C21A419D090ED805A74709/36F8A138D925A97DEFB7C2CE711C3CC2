@@ -1,0 +1,70 @@
+﻿using NetRevision.CSharpFundamentals;
+using NetRevision.DotNetCore;
+
+Console.WriteLine("╔════════════════════════════════════════════════════════════╗");
+Console.WriteLine("║  .NET Tech Stack Interview Revision - POC Collection      ║");
+Console.WriteLine("║  For Engineering Managers with 14+ Years Experience       ║");
+Console.WriteLine("╚════════════════════════════════════════════════════════════╝");
+Console.WriteLine();
+
+while (true)
+{
+    Console.WriteLine("\n=== MAIN MENU ===");
+    Console.WriteLine("1. Modern C# Features (C# 10-14)");
+    Console.WriteLine("2. Memory Management & Performance");
+    Console.WriteLine("3. Async/Await & Concurrency");
+    Console.WriteLine("4. Dependency Injection & IoC");
+    Console.WriteLine("5. Run All Demos");
+    Console.WriteLine("0. Exit");
+    Console.Write("\nSelect a demo (0-5): ");
+
+    var choice = Console.ReadLine();
+
+    try
+    {
+        switch (choice)
+        {
+            case "1":
+                ModernCSharpFeatures.RunDemo();
+                break;
+            case "2":
+                MemoryAndPerformance.RunDemo();
+                break;
+            case "3":
+                await AsyncAwaitConcurrency.RunDemo();
+                break;
+            case "4":
+                DependencyInjectionPatterns.RunDemo();
+                break;
+            case "5":
+                Console.WriteLine("\n" + new string('=', 60));
+                ModernCSharpFeatures.RunDemo();
+                Console.WriteLine(new string('=', 60));
+                MemoryAndPerformance.RunDemo();
+                Console.WriteLine(new string('=', 60));
+                await AsyncAwaitConcurrency.RunDemo();
+                Console.WriteLine(new string('=', 60));
+                DependencyInjectionPatterns.RunDemo();
+                Console.WriteLine(new string('=', 60));
+                break;
+            case "0":
+                Console.WriteLine("\n✓ Happy Interviewing! Good luck with your revision.");
+                return;
+            default:
+                Console.WriteLine("\n❌ Invalid choice. Please select 0-5.");
+                continue;
+        }
+
+        Console.WriteLine("\n✓ Demo completed. Review the interview questions in the source file.");
+        Console.WriteLine("Press any key to continue...");
+        Console.ReadKey();
+        Console.Clear();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"\n❌ Error: {ex.Message}");
+        Console.WriteLine("Press any key to continue...");
+        Console.ReadKey();
+        Console.Clear();
+    }
+}
